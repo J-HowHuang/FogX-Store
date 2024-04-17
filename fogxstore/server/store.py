@@ -28,7 +28,7 @@ class FogXStore(pa.flight.FlightServerBase):
             schema, descriptor, endpoints, lance_ds.count_rows(), -1
         )
 
-    def list_datasets(self, context, criteria):
+    def list_flights(self, context, criteria):
         for dataset in self._repo.iterdir():
             yield self._make_flight_info(dataset.name)
 
