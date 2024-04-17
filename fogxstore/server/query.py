@@ -6,9 +6,10 @@ from typing import Optional
 class VectorQuery:
     vector: list[float]
     top_k: int
-    
+
     def format(self):
         return f'search top_{self.top_k} for [{", ".join(self.vector[:5])}{"..." if len(self.vector) > 5 else ""}]'
+
 
 @dataclass
 class DatasetQuery:
