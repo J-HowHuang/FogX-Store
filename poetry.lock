@@ -1657,32 +1657,6 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
-name = "pylance"
-version = "0.10.13"
-description = "python wrapper for Lance columnar format"
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "pylance-0.10.13-cp38-abi3-macosx_10_15_x86_64.whl", hash = "sha256:63a933157ae37c9119755ba7e5d14c49f9998f6e735f425081623653f9ea4bf2"},
-    {file = "pylance-0.10.13-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:05d108a1d6ba1f8ea4b0bd7d0b474f38a71a73dad3e573de6f60a931574840f5"},
-    {file = "pylance-0.10.13-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ff143a51c10b6c403a33c98bdce7f5e3bdbfa0b328622121cfbf4193e088f76b"},
-    {file = "pylance-0.10.13-cp38-abi3-manylinux_2_24_aarch64.whl", hash = "sha256:8e3faf0e4a956b4eb9bb08b4f7a8764169f82abe289e0b949a3196c7f96b4de3"},
-    {file = "pylance-0.10.13-cp38-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:6b1c2226e78ed1b177176b97d73cac2af32df17d2c276117bf393d137abbc2a0"},
-    {file = "pylance-0.10.13-cp38-abi3-win_amd64.whl", hash = "sha256:f4bfcfe4300a9554e8f27d3f2d5ab585470655d3834654533a44461174ee6c35"},
-]
-
-[package.dependencies]
-numpy = ">=1.22"
-pyarrow = ">=12,<15.0.1"
-
-[package.extras]
-benchmarks = ["pytest-benchmark"]
-dev = ["ruff (==0.2.2)"]
-ray = ["ray[data]"]
-tests = ["boto3", "datasets", "duckdb", "h5py (<3.11)", "ml-dtypes", "pandas", "pillow", "polars[pandas,pyarrow]", "pytest", "tensorflow", "tqdm"]
-torch = ["torch"]
-
-[[package]]
 name = "pytest"
 version = "8.0.0"
 description = "pytest: simple powerful testing with Python"
@@ -2375,4 +2349,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "b043311d3f5266a9658947a74af6964d6cfa74f9047359645e687fb3fa64a3b9"
+content-hash = "5c210c240b709a871f82d8b7130d87d45722cd16ec91757b4614f0e17935e4b3"
