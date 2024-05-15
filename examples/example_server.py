@@ -1,7 +1,7 @@
-from fogxstore.server import FogXStore
+from skulk.server import SkulkServer
 import pathlib
 
-server = FogXStore(
-    location="grpc://localhost:11634", repo=pathlib.Path("./tests/datasets")
+server = SkulkServer(
+    location="grpc://localhost:11634", repo=pathlib.Path("./_datasets")
 )
 server.serve()

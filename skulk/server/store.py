@@ -2,30 +2,37 @@ import pyarrow as pa
 import pyarrow.flight
 import pyarrow.parquet
 import pathlib
-import lance
+import duckdb
+import pickle
+
+from ..core.query import SkulkQuery
 
 
-class FogXStore(pa.flight.FlightServerBase):
+class SkulkServer(pa.flight.FlightServerBase):
     def __init__(
         self,
         location="grpc://0.0.0.0:11634",
         repo=pathlib.Path("./_datasets"),
         **kwargs
     ):
-        super(FogXStore, self).__init__(location, **kwargs)
+        super(SkulkServer, self).__init__(location, **kwargs)
         self._location = location
         self._repo = repo
+        self.ticket_booth = {}
 
-    def _make_flight_info(self, dataset):
-        dataset_path = self._repo / dataset
-        lance_ds = lance.dataset(dataset_path)
-        schema = lance_ds.schema
-        descriptor = pa.flight.FlightDescriptor.for_path(
-            dataset.encode("utf-8")
-        )
-        endpoints = [pa.flight.FlightEndpoint(dataset, [self._location])]
+    def _make_flight_info(self, descriptor):
+        print("===============")
+        print(descriptor.descriptor_type)
+        print(descriptor.command[:50])
+        query: SkulkQuery = pickle.loads(descriptor.command)
+        sql = query.to_sql(self._repo)
+        print(sql)
+        dataset: pa.Table = duckdb.sql(sql).arrow()
+        self.ticket_booth[sql] = dataset
+        print(dataset.num_rows)
+        endpoints = [pa.flight.FlightEndpoint(sql.encode('utf-8'), [self._location])]
         return pa.flight.FlightInfo(
-            schema, descriptor, endpoints, lance_ds.count_rows(), -1
+            dataset.schema, descriptor, endpoints, dataset.num_rows, dataset.nbytes
         )
 
     def list_flights(self, context, criteria):
@@ -33,19 +40,17 @@ class FogXStore(pa.flight.FlightServerBase):
             yield self._make_flight_info(dataset.name)
 
     def get_flight_info(self, context, descriptor):
-        return self._make_flight_info(descriptor.path[0].decode("utf-8"))
+        return self._make_flight_info(descriptor)
 
     def do_put(self, context, descriptor, reader, writer):
         dataset = descriptor.path[0].decode("utf-8")
         dataset_path = self._repo / dataset
         data_table = reader.read_pandas()
-        lance.write_dataset(data_table, dataset_path)
+        # lance.write_dataset(data_table, dataset_path)
 
     def do_get(self, context, ticket):
-        dataset = ticket.ticket.decode("utf-8")
-        dataset_path = self._repo / dataset
         return pa.flight.RecordBatchStream(
-            lance.dataset(dataset_path).to_table()
+            self.ticket_booth[ticket.ticket.decode("utf-8")]
         )
 
     def list_actions(self, context):

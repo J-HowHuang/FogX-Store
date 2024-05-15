@@ -1,5 +1,5 @@
-from fogxstore.client import FogXStoreClient
-from fogxstore.server import FogXStore
+from skulk.client import SkulkClient
+from skulk.server import SkulkServer
 import lance
 from threading import Thread
 import pathlib
@@ -10,13 +10,13 @@ def _run_fogx_store(server):
 
 
 def test_client_get_dataset():
-    server = FogXStore(
+    server = SkulkServer(
         location="grpc://localhost:11634", repo=pathlib.Path("./_datasets")
     )
     t = Thread(target=_run_fogx_store, args=[server])
     t.start()
 
-    client = FogXStoreClient("localhost:11634")
+    client = SkulkClient("localhost:11634")
     table = client.get_dataset("test")
     true_table = lance.dataset("tests/datasets/test.lance").to_table()
     print(table.to_pandas())
