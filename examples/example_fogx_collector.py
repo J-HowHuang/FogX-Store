@@ -3,8 +3,8 @@ import fog_x
 # 🦊 Dataset Creation 
 # from distributed dataset storage 
 dataset1 = fog_x.Dataset(
-    name="demo_ds_1",
-    path="./test_dataset", # can be AWS S3, Google Bucket! 
+    name="demo_ds_2",
+    path="./_datasets", # can be AWS S3, Google Bucket! 
 )  
 
 # dataset2 = fog_x.Dataset(
