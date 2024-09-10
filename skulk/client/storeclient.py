@@ -14,6 +14,7 @@ class SkulkClient:
 
     def get_dataset(self, skulk_query: SkulkQuery) -> pa.Table:
         upload_descriptor = pa.flight.FlightDescriptor.for_command(
+            # TODO: replace pickle to other serialization method
             pickle.dumps(skulk_query)
         )
         flight = self.client.get_flight_info(upload_descriptor)

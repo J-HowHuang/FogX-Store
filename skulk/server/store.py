@@ -21,9 +21,11 @@ class SkulkServer(pa.flight.FlightServerBase):
         self.ticket_booth = {}
 
     def _make_flight_info(self, descriptor):
+        # TODO: replace pickle to other serialization method
         query: SkulkQuery = pickle.loads(descriptor.command)
         sql = query.to_sql(self._repo)
         dataset: pa.Table = duckdb.sql(sql).arrow()
+        # TODO: require small table size and fast query
         self.ticket_booth[sql] = dataset
         endpoints = [pa.flight.FlightEndpoint(sql.encode('utf-8'), [self._location])]
         return pa.flight.FlightInfo(
