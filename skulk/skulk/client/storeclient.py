@@ -2,9 +2,8 @@ import pyarrow as pa
 import pyarrow.flight
 import pyarrow.parquet
 import logging
-import pickle
 
-from ..core.query import SkulkQuery
+from ..predatorfox.cmd_pb2 import SkulkQuery
 
 
 class SkulkClient:
@@ -15,7 +14,7 @@ class SkulkClient:
     def get_dataset(self, skulk_query: SkulkQuery) -> pa.Table:
         upload_descriptor = pa.flight.FlightDescriptor.for_command(
             # TODO: replace pickle to other serialization method
-            pickle.dumps(skulk_query)
+            skulk_query.SerializeToString()
         )
         flight = self.client.get_flight_info(upload_descriptor)
         descriptor = flight.descriptor

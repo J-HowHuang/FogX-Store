@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use arrow_array::types::Float32Type;
 use arrow_array::{FixedSizeListArray, Int32Array, RecordBatch, RecordBatchIterator};
-use arrow_schema::{DataType, Field, Schema};
+use arrow_schema::{DataType, Field, Schema, SchemaRef};
 use futures::TryStreamExt;
 use arrow_flight::flight_service_server::FlightServiceServer;
 use arrow_flight::{FlightData, FlightDescriptor, FlightInfo, SchemaResult, Ticket};
@@ -24,6 +24,12 @@ impl Predator {
         let uri = "data/sample-lancedb";
         let lance_conn = connect(uri).execute().await?;
         Ok(Self { lance_conn })
+    }
+
+    pub async fn get_schema(&self, table_name: &String) -> Result<SchemaRef> {
+        // --8<-- [start:get_schema]
+        self.lance_conn.open_table(table_name).execute().await?.schema().await
+        // --8<-- [end:get_schema]
     }
 
     pub async fn create_index(table: &LanceDbTable) -> Result<()> {

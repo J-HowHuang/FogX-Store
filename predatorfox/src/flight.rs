@@ -17,19 +17,20 @@
 
 use crate::predatorfox;
 
-use arrow_array::new_empty_array;
 use arrow_flight::FlightEndpoint;
+use arrow_schema::{Schema, Field, DataType};
 use futures::stream::BoxStream;
+use log::info;
 use prost::Message;
-use tonic::transport::Server;
+use lancedb::error::Error;
 use tonic::{Request, Response, Status, Streaming};
 
+use arrow_flight::flight_descriptor::DescriptorType;
 use arrow_flight::{
     flight_service_server::FlightService, flight_service_server::FlightServiceServer, Action,
     ActionType, Criteria, Empty, FlightData, FlightDescriptor, FlightInfo, HandshakeRequest,
-    HandshakeResponse, PollInfo, PutResult, SchemaResult, Ticket, Location,
+    HandshakeResponse, Location, PollInfo, PutResult, SchemaResult, Ticket,
 };
-use arrow_flight::flight_descriptor::DescriptorType;
 
 use std::convert::TryFrom;
 #[derive(Clone)]
@@ -39,7 +40,27 @@ pub struct FlightServiceImpl {
 
 impl FlightServiceImpl {
     pub async fn new() -> Result<Self, ()> {
-        Ok(Self { predator: predatorfox::Predator::new().await.unwrap() })
+        Ok(Self {
+            predator: predatorfox::Predator::new().await.unwrap(),
+        })
+    }
+
+    pub async fn setup_predator(&self) {
+        // Setup code for predator
+        match self.predator
+            .create_empty_table(Schema::new(vec![
+                Field::new("c1", DataType::Int64, true),
+                Field::new("c2", DataType::Utf8, false),
+                Field::new("c3", DataType::Utf8, false),
+            ]).into())
+            .await {
+                Ok(_) => info!("Successfully created empty table"),
+                Err(e) => match e {
+                    // Handle specific error kinds if needed
+                    Error::TableAlreadyExists { .. } => info!("Table already exists"),
+                    _ => info!("Failed to create empty table: {:?}", e),
+                },
+            }
     }
 }
 
@@ -74,30 +95,49 @@ impl FlightService for FlightServiceImpl {
         let descriptor = _request.into_inner();
         match DescriptorType::try_from(descriptor.r#type) {
             Ok(DescriptorType::Cmd) => {
+                info!("Received command descriptor");
                 let cmd = predatorfox::cmd::Command::decode(descriptor.cmd).unwrap();
                 match predatorfox::cmd::CommandType::try_from(cmd.cmd_type) {
                     Ok(predatorfox::cmd::CommandType::Query) => {
-                        let flight_info = FlightInfo {
-                            schema: Vec::<u8>::new().into(),
-                            flight_descriptor: None,
-                            endpoint: vec![FlightEndpoint{
-                                ticket: Some(Ticket { ticket: Vec::<u8>::new().into() }),
-                                location: vec![Location{ uri: "[::1]:50051".to_string() }],
+                        info!("Received query command");
+                        let flight_info = FlightInfo::new()
+                            .try_with_schema(
+                                &self.predator.get_schema(&cmd.query.dataset).await.expect("schema failed"),
+                            )
+                            .expect("encoding failed")
+                            .with_descriptor(FlightDescriptor {
+                                r#type: DescriptorType::Cmd as i32,
+                                cmd: Vec::<u8>::new().into(),
+                                path: vec!["".to_string()],
+                            })
+                            .with_endpoint(FlightEndpoint {
+                                ticket: Some(Ticket {
+                                    ticket: Vec::<u8>::new().into(),
+                                }),
+                                location: vec![Location {
+                                    uri: "localhost:50051".to_string(),
+                                }],
                                 ..Default::default()
-                            }],
-                            total_records: 0,
-                            total_bytes: 0,
-                            ordered: false,
-                            app_metadata: Vec::<u8>::new().into(),
-                        };
+                            })
+                            // .with_total_bytes(0)
+                            // .with_total_records(0)
+                            .with_ordered(false);
                         return Ok(Response::new(flight_info));
-                    },
-                    Ok(predatorfox::cmd::CommandType::Unknown) => return Err(Status::unimplemented("unknown predatorfox command")),
+                    }
+                    Ok(predatorfox::cmd::CommandType::Unknown) => {
+                        return Err(Status::unimplemented("unknown predatorfox command"))
+                    }
                     Err(_) => return Err(Status::unimplemented("unknown predatorfox command")),
                 }
-            },
-            Ok(DescriptorType::Path) => return Err(Status::unimplemented("path is not supported, use command type descriptor")),
-            Ok(DescriptorType::Unknown) => return Err(Status::unimplemented("use command type descriptor")),
+            }
+            Ok(DescriptorType::Path) => {
+                return Err(Status::unimplemented(
+                    "path is not supported, use command type descriptor",
+                ))
+            }
+            Ok(DescriptorType::Unknown) => {
+                return Err(Status::unimplemented("use command type descriptor"))
+            }
             Err(_) => return Err(Status::unimplemented("Implement get_flight_info")),
         }
     }

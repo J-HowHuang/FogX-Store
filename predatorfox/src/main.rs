@@ -18,6 +18,8 @@
 
 mod predatorfox;
 mod flight;
+use env_logger;
+use log::info;
 use std::sync::Arc;
 
 use arrow_array::types::Float32Type;
@@ -30,11 +32,13 @@ use arrow_flight::flight_service_server::FlightServiceServer;
 
 #[tokio::main]
 async fn main() -> Result<(), ()> {
+    env_logger::init();
     let service = flight::FlightServiceImpl::new().await.unwrap();
+    service.setup_predator().await;
     let addr = "[::1]:50051".parse().unwrap();
 
     let svc = FlightServiceServer::new(service);
-
+    info!("Starting server on {}", addr);
     Server::builder().add_service(svc).serve(addr).await.unwrap();
 
     Ok(())

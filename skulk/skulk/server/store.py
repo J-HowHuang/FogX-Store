@@ -1,11 +1,10 @@
 import pyarrow as pa
 import pyarrow.flight
-import pyarrow.parquet
+import os
 import pathlib
 import duckdb
-import pickle
 
-from ..core.query import SkulkQuery
+from ..predatorfox.cmd_pb2 import SkulkQuery, VectorQuery
 
 
 class SkulkServer(pa.flight.FlightServerBase):
@@ -22,8 +21,10 @@ class SkulkServer(pa.flight.FlightServerBase):
 
     def _make_flight_info(self, descriptor):
         # TODO: replace pickle to other serialization method
-        query: SkulkQuery = pickle.loads(descriptor.command)
-        sql = query.to_sql(self._repo)
+        query: SkulkQuery = SkulkQuery()
+        query.ParseFromString(descriptor.command)
+        sql = self.query_to_sql(query)
+        print(sql)
         dataset: pa.Table = duckdb.sql(sql).arrow()
         # TODO: require small table size and fast query
         self.ticket_booth[sql] = dataset
@@ -31,7 +32,13 @@ class SkulkServer(pa.flight.FlightServerBase):
         return pa.flight.FlightInfo(
             dataset.schema, descriptor, endpoints, dataset.num_rows, dataset.nbytes
         )
-
+    
+    def query_to_sql(self, query: SkulkQuery):
+        return f'SELECT {",".join(query.columns) if len(query.columns) else "*"} FROM \'{os.path.join(self._repo, f"{query.dataset}.parquet")}\' {f" WHERE {query.predicates}" if query.predicates else ""} {self.vector_query_to_sql(query.vector_query) if query.HasField("vector_query") else ""};'
+    
+    def vector_query_to_sql(self, vector_query: VectorQuery):
+        return f'ORDER BY array_distance({vector_query.column}, [{", ".join(vector_query.target_vector)}]::FLOAT[{len(vector_query.target_vector)}]) LIMIT {vector_query.top_k}'
+    
     def list_flights(self, context, criteria):
         for dataset in self._repo.iterdir():
             yield self._make_flight_info(dataset.name)

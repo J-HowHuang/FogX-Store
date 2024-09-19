@@ -23,3 +23,6 @@ bytes = "1.7.2"
 
 [build-dependencies]
 prost-build = "0.13.2"
+
+[env]
+CARGO_LOG = "debug"
