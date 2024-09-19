@@ -1,0 +1,10 @@
+[package]
+name = "skulk"
+version = "0.1.0"
+edition = "2021"
+build = "src/build.rs"
+
+[dependencies]
+arrow-flight = "52.2.0"
+prost = "0.13.2"
+rocksdb = "0.22.0"

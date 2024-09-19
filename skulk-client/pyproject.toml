@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "skulk"
+name = "skulk-client"
 version = "0.1.0"
 description = "This is a store service that collects and serves large robotics datasets."
 authors = ["J-HowHuang <jhow@cmu.edu>"]
