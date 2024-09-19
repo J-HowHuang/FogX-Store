@@ -1,18 +1,13 @@
-use lancedb::arrow::IntoArrow;
 use lancedb::connection::Connection;
 use lancedb::index::Index;
 use lancedb::query::{ExecutableQuery, QueryBase};
 use lancedb::{connect, Result, Table as LanceDbTable};
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use arrow_array::types::Float32Type;
-use arrow_array::{FixedSizeListArray, Int32Array, RecordBatch, RecordBatchIterator};
-use arrow_schema::{DataType, Field, Schema, SchemaRef};
+use arrow_array::RecordBatch;
+use arrow_schema::{Schema, SchemaRef};
 use futures::TryStreamExt;
-use arrow_flight::flight_service_server::FlightServiceServer;
-use arrow_flight::{FlightData, FlightDescriptor, FlightInfo, SchemaResult, Ticket};
-use tonic::transport::Server;
-use tonic::{Request, Response, Status};
 
 #[derive(Clone)]
 pub struct Predator {
@@ -53,6 +48,15 @@ impl Predator {
         // --8<-- [start:create_empty_table]
         self.lance_conn.create_empty_table("empty_table", schema).execute().await
         // --8<-- [end:create_empty_table]
+    }
+
+    pub async fn sync_dataset(&self, tbl: &LanceDbTable, rlds_path: PathBuf) -> Result<()> {
+        // --8<-- [start:sync_dataset]
+        // read tensorflow dataset format file in `rlds_path` and iterate through each record
+        // and insert into `tbl`
+        
+        // --8<-- [end:sync_dataset]
+        Ok(())
     }
 
     pub async fn delete(&self, tbl: &LanceDbTable) -> Result<()> {

@@ -27,7 +27,7 @@ use tonic::{Request, Response, Status, Streaming};
 
 use arrow_flight::flight_descriptor::DescriptorType;
 use arrow_flight::{
-    flight_service_server::FlightService, flight_service_server::FlightServiceServer, Action,
+    flight_service_server::FlightService, Action,
     ActionType, Criteria, Empty, FlightData, FlightDescriptor, FlightInfo, HandshakeRequest,
     HandshakeResponse, Location, PollInfo, PutResult, SchemaResult, Ticket,
 };
@@ -100,6 +100,8 @@ impl FlightService for FlightServiceImpl {
                 match predatorfox::cmd::CommandType::try_from(cmd.cmd_type) {
                     Ok(predatorfox::cmd::CommandType::Query) => {
                         info!("Received query command");
+                        let mut buf = Vec::<u8>::new();
+                        _ = cmd.query.encode(&mut buf).expect("cannot encode skulk query");
                         let flight_info = FlightInfo::new()
                             .try_with_schema(
                                 &self.predator.get_schema(&cmd.query.dataset).await.expect("schema failed"),
@@ -112,7 +114,7 @@ impl FlightService for FlightServiceImpl {
                             })
                             .with_endpoint(FlightEndpoint {
                                 ticket: Some(Ticket {
-                                    ticket: Vec::<u8>::new().into(),
+                                    ticket: buf.into(),
                                 }),
                                 location: vec![Location {
                                     uri: "localhost:50051".to_string(),
