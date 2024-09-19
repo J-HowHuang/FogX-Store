@@ -3,26 +3,29 @@ import pyarrow.flight
 import pyarrow.parquet
 import logging
 
+from ..predatorfox.cmd_pb2 import SkulkQuery
 
-class FogXStoreClient:
+
+class SkulkClient:
     def __init__(self, endpoint: str) -> None:
         self.endpoint = endpoint
         self.client = pyarrow.flight.connect(f"grpc://{self.endpoint}")
 
-    def get_dataset(self, dataset_name) -> pa.Table:
-        upload_descriptor = pa.flight.FlightDescriptor.for_path(
-            f"{dataset_name}.lance"
+    def get_dataset(self, skulk_query: SkulkQuery) -> pa.Table:
+        upload_descriptor = pa.flight.FlightDescriptor.for_command(
+            # TODO: replace pickle to other serialization method
+            skulk_query.SerializeToString()
         )
         flight = self.client.get_flight_info(upload_descriptor)
         descriptor = flight.descriptor
-        logging.debug(
-            "Path:",
-            descriptor.path[0].decode("utf-8"),
-            "Rows:",
-            flight.total_records,
-            "Size:",
-            flight.total_bytes,
-        )
+        # logging.debug(
+        #     "SQL:",
+        #     descriptor.command.decode("utf-8"),
+        #     "Rows:",
+        #     flight.total_records,
+        #     "Size:",
+        #     flight.total_bytes,
+        # )
         logging.debug("=== Schema ===")
         logging.debug(flight.schema)
         logging.debug("==============")
@@ -31,3 +34,4 @@ class FogXStoreClient:
         read_table = reader.read_all()
 
         return read_table
+    
