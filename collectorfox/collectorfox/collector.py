@@ -21,5 +21,22 @@ def index():
 
     return 'Data written to LanceDB successfully!'
 
+@app.route('/')
+def rlds_to_lance(ds: tf.data.Dataset):
+    
+    # Connect to LanceDB
+    db = lancedb.connect('your_database_url')
+    
+    
+    # Create a new collection in LanceDB
+    collection = db.create_collection('your_collection_name')
+    # Read RLDS dataset
+    for episode in ds:
+        episode.pop('steps') # Remove steps from the episode (Rest of the data is metadata)
+        for _, metadata in episode.items():
+            collection.insert(metadata)
+    
+    return 'Data written to LanceDB successfully!'
+
 if __name__ == '__main__':
     app.run()
