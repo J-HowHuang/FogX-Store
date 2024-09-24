@@ -15,7 +15,7 @@ pub struct CatalogServer {
 
 impl CatalogServer {
     pub fn new(catalog: Arc<Mutex<Catalog>>) -> Result<Self, ()> {
-        let rocket_port = "11632";
+        let rocket_port = 11632;
         let build = rocket::build()
             .configure(rocket::Config::figment().merge(("port", rocket_port)))
             .manage(catalog)

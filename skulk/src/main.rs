@@ -12,13 +12,17 @@ async fn main() -> Result<(), ()> {
     env_logger::init();
     let cat = catalog::Catalog::new("db/catalog").unwrap();
     let shared_cat = Arc::new(Mutex::new(cat));
-    let cat_server = catalog::CatalogServer::new(shared_cat.clone()).unwrap();
-    cat_server.rocket.launch().await.unwrap();
-    let addr = "[::1]:50052".parse().unwrap();
+
+    let addr: std::net::SocketAddr = "[::1]:50052".parse().unwrap();
     let flight = flight::FlightServiceImpl::new(shared_cat.clone());
     let svc = FlightServiceServer::new(flight);
     info!("Starting server on {}", addr);
-    Server::builder().add_service(svc).serve(addr).await.unwrap();
+    let flight_thread = Server::builder().add_service(svc).serve(addr);
+    
+    let cat_server = catalog::CatalogServer::new(shared_cat.clone()).unwrap();
+    let cat_thread = cat_server.rocket.launch();
+
+    let _ = futures::join!(flight_thread, cat_thread);
 
     Ok(())
 }
