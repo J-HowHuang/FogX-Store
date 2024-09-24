@@ -1,47 +1,70 @@
-use rocksdb::{DB, Options, Error};
+use duckdb::{params, Connection, Result};
+use prost::bytes::Bytes;
+use rocket::{get, post, routes, Rocket, State, Build};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+include!(concat!(env!("OUT_DIR"), "/catalog.cmd.rs"));
 
 pub struct Catalog {
-    db: DB,
-    tables: HashMap<String, String>,
+    db_conn: Connection,
+}
+
+pub struct CatalogServer {
+    pub rocket: Rocket<Build>,
+}
+
+impl CatalogServer {
+    pub fn new(catalog: Arc<Mutex<Catalog>>) -> Result<Self, ()> {
+        let rocket_port = "11632";
+        let build = rocket::build()
+            .configure(rocket::Config::figment().merge(("port", rocket_port)))
+            .manage(catalog)
+            .mount("/", routes![health_check, register_dataset]);
+        Ok(CatalogServer {rocket: build})
+    }
 }
 
 impl Catalog {
-    pub fn new(path: &str) -> Result<Self, Error> {
-        let mut options = Options::default();
-        options.create_if_missing(true);
-        let db = DB::open(&options, path)?;
-        Ok(Catalog {
-            db,
-            tables: HashMap::new(),
-        })
+    pub fn new(path: &str) -> Result<Self, String> {
+        let db_conn = Connection::open(path).expect("Failed to open connection");
+        Ok(Catalog { db_conn })
     }
-
-    pub fn create_table(&mut self, table_name: &str) -> Result<(), Error> {
-        if self.tables.contains_key(table_name) {
-            return Err(Error::new("Table already exists"));
-        }
-        self.tables.insert(table_name.to_string(), table_name.to_string());
-        self.db.put(table_name, b"")?;
+    pub fn init_catalog(&mut self) -> Result<(), String> {
+        self.db_conn.execute("CREATE TYPE source_type AS ENUM ('fox', 's3');", []);
+        self.db_conn.execute(
+            "CREATE TABLE IF NOT EXISTS catalog (
+                    dataset VARCHAR,
+                    schema BINARY,
+                );
+                ",
+            [],
+        );
+        self.db_conn.execute(
+            "CREATE TABLE IF NOT EXISTS foxes (
+                    dataset VARCHAR,
+                    ip_addr VARCHAR,
+                );
+                ",
+            [],
+        );
         Ok(())
     }
-
-    pub fn get_table(&self, table_name: &str) -> Option<&String> {
-        self.tables.get(table_name)
-    }
-
-    pub fn delete_table(&mut self, table_name: &str) -> Result<(), Error> {
-        if self.tables.remove(table_name).is_none() {
-            return Err(Error::new("Table does not exist"));
-        }
-        self.db.delete(table_name)?;
+    pub fn register_dataset(&mut self, name: String, schema: Vec<u8>) -> Result<(), String> {
+        self.db_conn.execute(
+            "INSERT INTO catalog (dataset, schema) VALUES ($1, $2);",
+            params![name, schema],
+        );
         Ok(())
     }
 }
 
-fn main() {
-    let mut catalog = Catalog::new("/path/to/rocksdb").unwrap();
-    catalog.create_table("users").unwrap();
-    println!("{:?}", catalog.get_table("users"));
-    catalog.delete_table("users").unwrap();
+#[get("/")]
+fn health_check() -> &'static str {
+    "Healthy\n"
+}
+
+#[post("/register/dataset/<name>", data = "<cmd_bytes>")]
+fn register_dataset(name: String, cmd_bytes: Vec<u8>, catalog: &State<Arc<Mutex<Catalog>>>) -> &'static str {
+    catalog.inner().lock().unwrap().register_dataset(name, cmd_bytes).unwrap();
+    "Dataset registered\n"
 }

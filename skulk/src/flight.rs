@@ -16,26 +16,35 @@
 // under the License.
 
 use crate::predatorfox;
+use crate::catalog;
 
 use arrow_flight::FlightEndpoint;
-use arrow_schema::{Schema, Field, DataType};
+use arrow_schema::{DataType, Field, Schema};
 use futures::stream::BoxStream;
 use log::info;
 use prost::Message;
-use lancedb::error::Error;
 use tonic::{Request, Response, Status, Streaming};
+use catalog::Catalog;
+use std::sync::{Arc, Mutex};
 
 use arrow_flight::flight_descriptor::DescriptorType;
 use arrow_flight::{
-    flight_service_server::FlightService, Action,
-    ActionType, Criteria, Empty, FlightData, FlightDescriptor, FlightInfo, HandshakeRequest,
-    HandshakeResponse, Location, PollInfo, PutResult, SchemaResult, Ticket,
+    flight_service_server::FlightService, Action, ActionType, Criteria, Empty, FlightData,
+    FlightDescriptor, FlightInfo, HandshakeRequest, HandshakeResponse, Location, PollInfo,
+    PutResult, SchemaResult, Ticket,
 };
 
 use std::convert::TryFrom;
-#[derive(Clone)]
-pub struct FlightServiceImpl {}
 
+pub struct FlightServiceImpl {
+    catalog: Arc<Mutex<Catalog>>
+}
+
+impl FlightServiceImpl {
+    pub fn new(cat: Arc<Mutex<Catalog>>) -> Self {
+        FlightServiceImpl { catalog: cat }
+    }
+}
 
 #[tonic::async_trait]
 impl FlightService for FlightServiceImpl {
@@ -69,41 +78,25 @@ impl FlightService for FlightServiceImpl {
         match DescriptorType::try_from(descriptor.r#type) {
             Ok(DescriptorType::Cmd) => {
                 info!("Received command descriptor");
-                let cmd = predatorfox::cmd::Command::decode(descriptor.cmd).unwrap();
-                match predatorfox::cmd::CommandType::try_from(cmd.cmd_type) {
-                    Ok(predatorfox::cmd::CommandType::Query) => {
-                        info!("Received query command");
-                        let mut buf = Vec::<u8>::new();
-                        _ = cmd.query.encode(&mut buf).expect("cannot encode skulk query");
-                        let flight_info = FlightInfo::new()
-                            .try_with_schema(
-                                &self.predator.get_schema(&cmd.query.dataset).await.expect("schema failed"),
-                            )
-                            .expect("encoding failed")
-                            .with_descriptor(FlightDescriptor {
-                                r#type: DescriptorType::Cmd as i32,
-                                cmd: Vec::<u8>::new().into(),
-                                path: vec!["".to_string()],
-                            })
-                            .with_endpoint(FlightEndpoint {
-                                ticket: Some(Ticket {
-                                    ticket: buf.into(),
-                                }),
-                                location: vec![Location {
-                                    uri: "localhost:50051".to_string(),
-                                }],
-                                ..Default::default()
-                            })
-                            // .with_total_bytes(0)
-                            // .with_total_records(0)
-                            .with_ordered(false);
-                        return Ok(Response::new(flight_info));
-                    }
-                    Ok(predatorfox::cmd::CommandType::Unknown) => {
-                        return Err(Status::unimplemented("unknown predatorfox command"))
-                    }
-                    Err(_) => return Err(Status::unimplemented("unknown predatorfox command")),
-                }
+                let flight_info = FlightInfo::new()
+                    .with_descriptor(FlightDescriptor {
+                        r#type: DescriptorType::Cmd as i32,
+                        cmd: Vec::<u8>::new().into(),
+                        path: vec!["".to_string()],
+                    })
+                    .with_endpoint(FlightEndpoint {
+                        ticket: Some(Ticket {
+                            ticket: descriptor.cmd,
+                        }),
+                        location: vec![Location {
+                            uri: "localhost:50051".to_string(),
+                        }],
+                        ..Default::default()
+                    })
+                    // .with_total_bytes(0)
+                    // .with_total_records(0)
+                    .with_ordered(false);
+                return Ok(Response::new(flight_info));
             }
             Ok(DescriptorType::Path) => {
                 return Err(Status::unimplemented(
