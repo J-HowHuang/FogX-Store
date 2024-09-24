@@ -25,7 +25,7 @@ use log::info;
 use prost::Message;
 use tonic::{Request, Response, Status, Streaming};
 use catalog::Catalog;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use arrow_flight::flight_descriptor::DescriptorType;
 use arrow_flight::{
@@ -44,6 +44,11 @@ impl FlightServiceImpl {
     pub fn new(cat: Arc<Mutex<Catalog>>) -> Self {
         FlightServiceImpl { catalog: cat }
     }
+    // pub fn get_dataset_loc(&self, dataset: String) -> Vec<Location> {
+    //     let cat = self.catalog.lock().unwrap();
+    //     let loc = cat.get_dataset_loc(dataset);
+    //     loc
+    // }
 }
 
 #[tonic::async_trait]

@@ -5,7 +5,7 @@ mod catalog;
 use arrow_flight::flight_service_server::FlightServiceServer;
 use log::info;
 use tonic::transport::Server;
-use std::sync::{Arc, Mutex};
+use std::{future::IntoFuture, sync::{Arc, Mutex, RwLock}};
 
 #[tokio::main]
 async fn main() -> Result<(), ()> {
@@ -20,7 +20,9 @@ async fn main() -> Result<(), ()> {
     let flight_thread = Server::builder().add_service(svc).serve(addr);
     
     let cat_server = catalog::CatalogServer::new(shared_cat.clone()).unwrap();
-    let cat_thread = cat_server.rocket.launch();
+    let cat_listener = tokio::net::TcpListener::bind("0.0.0.0:11632").await.unwrap();
+    
+    let cat_thread = axum::serve(cat_listener, cat_server.app).into_future();
 
     let _ = futures::join!(flight_thread, cat_thread);
 

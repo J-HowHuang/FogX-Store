@@ -1,8 +1,14 @@
+use axum::{
+    extract::State,
+    http::StatusCode,
+    routing::{get, post},
+    Json, Router,
+};
 use duckdb::{params, Connection, Result};
 use prost::bytes::Bytes;
-use rocket::{get, post, routes, Rocket, State, Build};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use tokio::sync::RwLock;
 include!(concat!(env!("OUT_DIR"), "/catalog.cmd.rs"));
 
 pub struct Catalog {
@@ -10,17 +16,15 @@ pub struct Catalog {
 }
 
 pub struct CatalogServer {
-    pub rocket: Rocket<Build>,
+    pub app: Router,
 }
 
 impl CatalogServer {
     pub fn new(catalog: Arc<Mutex<Catalog>>) -> Result<Self, ()> {
-        let rocket_port = 11632;
-        let build = rocket::build()
-            .configure(rocket::Config::figment().merge(("port", rocket_port)))
-            .manage(catalog)
-            .mount("/", routes![health_check, register_dataset]);
-        Ok(CatalogServer {rocket: build})
+        let app = Router::new()
+            .route("/", get(health_check))
+            .with_state(catalog);
+        Ok(CatalogServer { app })
     }
 }
 
@@ -30,7 +34,8 @@ impl Catalog {
         Ok(Catalog { db_conn })
     }
     pub fn init_catalog(&mut self) -> Result<(), String> {
-        self.db_conn.execute("CREATE TYPE source_type AS ENUM ('fox', 's3');", []);
+        self.db_conn
+            .execute("CREATE TYPE source_type AS ENUM ('fox', 's3');", []);
         self.db_conn.execute(
             "CREATE TABLE IF NOT EXISTS catalog (
                     dataset VARCHAR,
@@ -58,13 +63,19 @@ impl Catalog {
     }
 }
 
-#[get("/")]
-fn health_check() -> &'static str {
+async fn health_check() -> &'static str {
     "Healthy\n"
 }
 
-#[post("/register/dataset/<name>", data = "<cmd_bytes>")]
-fn register_dataset(name: String, cmd_bytes: Vec<u8>, catalog: &State<Arc<Mutex<Catalog>>>) -> &'static str {
-    catalog.inner().lock().unwrap().register_dataset(name, cmd_bytes).unwrap();
+fn register_dataset(
+    name: String,
+    cmd_bytes: Vec<u8>,
+    State(catalog): State<Arc<Mutex<Catalog>>>,
+) -> &'static str {
+    catalog
+        .lock()
+        .unwrap()
+        .register_dataset(name, cmd_bytes)
+        .unwrap();
     "Dataset registered\n"
 }
