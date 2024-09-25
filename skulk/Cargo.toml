@@ -6,6 +6,7 @@ build = "src/build.rs"
 
 [dependencies]
 arrow-flight = "52.2.0"
+arrow-ipc = "53.0.0"
 arrow-schema = "53.0.0"
 axum = "0.7.6"
 duckdb = { version = "1.0.0", features = ["bundled"] }

@@ -15,17 +15,19 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::predatorfox;
 use crate::catalog;
+use crate::predatorfox;
+use crate::predatorfox::cmd::SkulkQuery;
 
 use arrow_flight::FlightEndpoint;
 use arrow_schema::{DataType, Field, Schema};
+use axum::body::Bytes;
+use catalog::Catalog;
 use futures::stream::BoxStream;
 use log::info;
 use prost::Message;
-use tonic::{Request, Response, Status, Streaming};
-use catalog::Catalog;
 use std::sync::{Arc, Mutex, RwLock};
+use tonic::{Request, Response, Status, Streaming};
 
 use arrow_flight::flight_descriptor::DescriptorType;
 use arrow_flight::{
@@ -37,18 +39,23 @@ use arrow_flight::{
 use std::convert::TryFrom;
 
 pub struct FlightServiceImpl {
-    catalog: Arc<Mutex<Catalog>>
+    catalog: Arc<Mutex<Catalog>>,
 }
 
 impl FlightServiceImpl {
     pub fn new(cat: Arc<Mutex<Catalog>>) -> Self {
         FlightServiceImpl { catalog: cat }
     }
-    // pub fn get_dataset_loc(&self, dataset: String) -> Vec<Location> {
-    //     let cat = self.catalog.lock().unwrap();
-    //     let loc = cat.get_dataset_loc(dataset);
-    //     loc
-    // }
+    pub fn get_dataset_locs(&self, dataset: String) -> Vec<Location> {
+        let cat = self.catalog.lock().unwrap();
+        let locs = cat.get_dataset_locs(dataset);
+
+        locs.iter()
+            .map(|loc_str| Location {
+                uri: loc_str.to_string(),
+            })
+            .collect()
+    }
 }
 
 #[tonic::async_trait]
@@ -83,24 +90,26 @@ impl FlightService for FlightServiceImpl {
         match DescriptorType::try_from(descriptor.r#type) {
             Ok(DescriptorType::Cmd) => {
                 info!("Received command descriptor");
-                let flight_info = FlightInfo::new()
+                let skulk_query = SkulkQuery::decode(descriptor.cmd).unwrap();
+                let locs = self.get_dataset_locs(skulk_query.dataset);
+                let mut flight_info = FlightInfo::new()
                     .with_descriptor(FlightDescriptor {
                         r#type: DescriptorType::Cmd as i32,
                         cmd: Vec::<u8>::new().into(),
                         path: vec!["".to_string()],
                     })
-                    .with_endpoint(FlightEndpoint {
-                        ticket: Some(Ticket {
-                            ticket: descriptor.cmd,
-                        }),
-                        location: vec![Location {
-                            uri: "localhost:50051".to_string(),
-                        }],
-                        ..Default::default()
-                    })
                     // .with_total_bytes(0)
                     // .with_total_records(0)
                     .with_ordered(false);
+                for loc in locs {
+                    flight_info = flight_info.with_endpoint(FlightEndpoint {
+                        ticket: Some(Ticket {
+                            ticket: Bytes::from("".as_bytes()),
+                        }),
+                        location: vec![loc],
+                        ..Default::default()
+                    })
+                }
                 return Ok(Response::new(flight_info));
             }
             Ok(DescriptorType::Path) => {
