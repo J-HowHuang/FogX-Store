@@ -1,6 +1,5 @@
-use arrow_ipc::writer::{IpcWriteOptions, StreamWriter};
 use axum::{
-    extract::{Path, State}, routing::{get, post}, Json, Router
+    extract::{Path, State}, routing::{get, post}, Router
 };
 use axum::body::Bytes;
 use duckdb::{params, Connection, Result};
@@ -112,8 +111,7 @@ async fn add_loc_to_ds(
 
 #[cfg(test)]
 mod catalog_tests {
-    use futures::stream;
-
+    use arrow_ipc::writer::StreamWriter;
     use super::*;
 
     #[test]

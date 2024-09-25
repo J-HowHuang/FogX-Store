@@ -16,17 +16,15 @@
 // under the License.
 
 use crate::catalog;
-use crate::predatorfox;
 use crate::predatorfox::cmd::SkulkQuery;
 
 use arrow_flight::FlightEndpoint;
-use arrow_schema::{DataType, Field, Schema};
 use axum::body::Bytes;
 use catalog::Catalog;
 use futures::stream::BoxStream;
 use log::info;
 use prost::Message;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use tonic::{Request, Response, Status, Streaming};
 
 use arrow_flight::flight_descriptor::DescriptorType;
