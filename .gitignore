@@ -161,3 +161,6 @@ cython_debug/
 
 **/_datasets/*
 predatorfox/data/*
+skulk/db/*
+**/.vscode/*
+**/.DS_Store

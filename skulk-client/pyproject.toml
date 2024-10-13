@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "skulk"
+name = "skulkclient"
 version = "0.1.0"
 description = "This is a store service that collects and serves large robotics datasets."
 authors = ["J-HowHuang <jhow@cmu.edu>"]
@@ -10,6 +10,7 @@ python = "^3.9"
 duckdb = "^0.10.2"
 protobuf = "^5.28.2"
 pyarrow = "^17.0.0"
+requests = "^2.32.3"
 
 
 [tool.poetry.group.test.dependencies]

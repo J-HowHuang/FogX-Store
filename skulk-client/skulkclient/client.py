@@ -3,8 +3,11 @@ import pyarrow.flight
 import pyarrow.parquet
 import logging
 
-from ..predatorfox.cmd_pb2 import SkulkQuery
+from .predatorfox.cmd_pb2 import SkulkQuery
 
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class SkulkClient:
     def __init__(self, endpoint: str) -> None:
@@ -26,9 +29,9 @@ class SkulkClient:
         #     "Size:",
         #     flight.total_bytes,
         # )
-        logging.debug("=== Schema ===")
-        logging.debug(flight.schema)
-        logging.debug("==============")
+        logger.debug("=== Endpoints ===")
+        logger.debug(flight.endpoints)
+        logger.debug("==============")
 
         reader = self.client.do_get(flight.endpoints[0].ticket)
         read_table = reader.read_all()

@@ -1,0 +1,27 @@
+syntax = "proto2";
+
+package predatorfox.cmd;
+
+message Command {
+    required CommandType cmd_type = 1;
+    required SkulkQuery query = 2;
+}
+
+message SkulkQuery {
+    required string dataset = 1;
+    repeated string columns = 2;
+    optional string predicates = 3;
+    optional VectorQuery vector_query = 4; // if present with predicate, search for top_k similar rows satisfying predicates
+    optional int32 limit = 5; // limit the number of results returned (this will dominate top_k if less than top_k)
+}
+
+message VectorQuery {
+    required string column = 1;
+    repeated float target_vector = 2;
+    required int32 top_k = 3;
+}
+
+enum CommandType {
+    UNKNOWN = 0;
+    QUERY = 1;
+}

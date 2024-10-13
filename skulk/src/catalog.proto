@@ -1,0 +1,32 @@
+syntax = "proto2";
+
+package catalog.cmd;
+
+message DatasetRegistration {
+    required string name = 1;
+    required bytes schema = 2;
+    repeated Node nodes = 3;
+    optional string description = 4;
+}
+
+message NodeRegistration {
+    repeated Node nodes = 1;
+}
+
+message Node {
+    required string id = 1;
+    required string address = 2;
+    optional string description = 3;
+}
+
+message CatalogCommand {
+    required CatalogCommandType cmd_type = 1;
+    optional DatasetRegistration dataset_reg = 2;
+    optional NodeRegistration node_reg = 3;
+}
+
+enum CatalogCommandType {
+    UNKNOWN = 0;
+    DATASET_REGISTER = 1;
+    NODE_REGISTER = 2;
+}
