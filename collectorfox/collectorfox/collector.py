@@ -5,6 +5,7 @@ import pyarrow as pa
 from collections import defaultdict
 import tensorflow_datasets as tfds
 import lancedb
+import socket
 import json
 import requests
 import base64
@@ -15,6 +16,10 @@ GCS_TOP_K = 10
 
 app = Flask(__name__)
 
+def get_server_ip():
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    return ip_address
 
 # add a new dataset with post "" request
 def add_new_dataset_catalog(dataset: str, schema: pa.Schema):
@@ -26,9 +31,9 @@ def add_new_dataset_catalog(dataset: str, schema: pa.Schema):
 
 
 # add a new location to the dataset catalog with post "" request
-def add_new_location_to_dataset(location: str, dataset: str):
+def add_new_location_to_dataset(dataset: str):
     url = "http://localhost:11632/dataset/" + dataset + "/add"
-    response = requests.post(url, data=location)
+    response = requests.post(url, data=get_server_ip())
     if response.status_code != 200:
         raise Exception("Failed to add location to the dataset catalog")
     
@@ -48,7 +53,7 @@ def create_table():
         #  create a table named as dataset
         db.create_table(dataset, schema=schema)
         add_new_dataset_catalog(dataset, schema) # add the dataset to the dataset catalog
-        add_new_location_to_dataset(uri, dataset) # add the location to the dataset catalog
+        add_new_location_to_dataset(dataset) # add the location to the dataset catalog
         return jsonify({"message": "Database created successfully"}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
@@ -90,6 +95,8 @@ def add_data_to_lancedb():
     
     except Exception as e:
         return jsonify({"message": str(e)}), 500
+
+
 
 
 if __name__ == '__main__':
