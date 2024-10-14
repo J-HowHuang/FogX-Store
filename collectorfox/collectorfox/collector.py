@@ -4,63 +4,90 @@ import lance
 import pyarrow as pa
 from collections import defaultdict
 import tensorflow_datasets as tfds
+import lancedb
+import json
+import requests
+
+GCS_TOP_K = 10
 
 app = Flask(__name__)
 
-@app.route('/')
-def index():
-    # Read in the TensorFlow dataset
-    dataset = tf.data.Dataset.from_tensor_slices([1, 2, 3, 4, 5])
 
-    # Connect to LanceDB
-    db = lancedb.connect('your_database_url')
+# add a new dataset with post "" request
+def add_new_dataset_catalog(dataset):
+    url = "http://localhost:11632/dataset/" + dataset
+    response = requests.post(url)
+    return response.status_code == 200
 
-    # Create a new collection in LanceDB
-    collection = db.create_collection('your_collection_name')
 
-    # Write the dataset into LanceDB
-    for data in dataset:
-        collection.insert(data.numpy())
-
-    return 'Data written to LanceDB successfully!'
+# add a new location to the dataset catalog with post "" request
+def add_new_location_to_dataset(location, dataset):
+    url = "http://localhost:11632/dataset/" + dataset + "/add"
+    response = requests.post(url, data=location)
+    return response.status_code == 200
+    
+# create a new dataset table with the given schema
+@app.route('/create', methods=['POST'])
+def create_database():
+    try:
+        uri = request.json.get('uri') # get the uri from the request
+        dataset = request.json.get('dataset') # get the dataset name from the request
+        received_schema_json = request.json.get('fields') # get the schema from the request
+        received_schema = json.loads(received_schema_json)
+        fields = [
+            pa.field(field['name'], getattr(pa, field['type'])()) for field in received_schema['fields']
+        ]
+        schema = pa.schema(fields)
+        # connect to the lancedb with the given uri
+        db = lancedb.connect(uri)
+        #  create a table named as dataset
+        db.create_table(dataset, schema=schema)
+        add_new_dataset_catalog(dataset) # add the dataset to the dataset catalog
+        add_new_location_to_dataset(uri, dataset) # add the location to the dataset catalog
+        return jsonify({"message": "Database created successfully"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
 @app.route('/write', methods=['POST'])
-def rlds_to_lance(): 
+def add_data_to_lancedb(): 
     try:
         uri = request.json.get('uri')
+        dataset = request.json.get('dataset')
         ds_path = request.json.get('ds_path') 
         
+        # connect to the lancedb with the given uri
+        db = lancedb.connect(uri)
+        #  read table from the lancedb with the given uri
+        tbl = db.open_table(dataset)
+
         if ds_path.startswith('gs://'): # if the dataset is stored in GCS
+            print("Reading dataset from GCS")
             b = tfds.builder_from_directory(builder_dir=ds_path)
-            ds = b.as_dataset(split='train[:10]').shuffle(10)
-        else: # if the dataset is stored locally
+            ds = b.as_dataset(split='train[:{}]'.format(GCS_TOP_K))
+        else: # TODO if the dataset is stored locally
+            print("Reading dataset from local")
             ds = tf.data.Dataset.load(ds_path)
         
-        episode_table = defaultdict(list)
+        print("Writing dataset to LanceDB")
         for episode in ds:
-            # serialize the step tensor and store it into step colomn
-            for step_id, step in enumerate(episode['steps']):
-                for key, data in step.items():
-                    if key == 'observation':
-                        continue
-                    data = data.numpy()
-                    episode_table[f"step_{step_id}_{key}"].append(data)
-
+            episode_table = dict()
+            print(episode['episode_metadata'])
             for key, value in episode['episode_metadata'].items():
+                print(key, value)
                 value = value.numpy()
                 if isinstance(value, bytes): # serialize the bytes tensor
                     value = str(value)
-                episode_table[key].append(value)
-            arrow_table = pa.table(episode_table)
-        for k, v in episode_table.items():
-            print(len(v))
-        lance.write_dataset(arrow_table, uri, max_rows_per_group=8192, max_rows_per_file=1024*1024)
+                episode_table[key] = [value]
+            arrow_row = pa.table(episode_table)
+            tbl.add(arrow_row)
+        
         return jsonify({"message": "Dataset written successfully"}), 200
     
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
 
-
 if __name__ == '__main__':
     app.run()
+    
+
