@@ -18,13 +18,15 @@
 use crate::catalog;
 use crate::predatorfox::cmd::SkulkQuery;
 
-use arrow_flight::FlightEndpoint;
+use arrow_flight::{FlightClient, FlightEndpoint};
 use axum::body::Bytes;
 use catalog::Catalog;
 use futures::stream::BoxStream;
 use log::info;
 use prost::Message;
 use std::sync::{Arc, Mutex};
+use std::task::Poll;
+use tonic::transport::{channel, Channel};
 use tonic::{Request, Response, Status, Streaming};
 
 use arrow_flight::flight_descriptor::DescriptorType;
@@ -90,6 +92,7 @@ impl FlightService for FlightServiceImpl {
                 info!("Received command descriptor");
                 let skulk_query = SkulkQuery::decode(descriptor.cmd).unwrap();
                 let locs = self.get_dataset_locs(skulk_query.dataset);
+
                 let mut flight_info = FlightInfo::new()
                     .with_descriptor(FlightDescriptor {
                         r#type: DescriptorType::Cmd as i32,
@@ -126,7 +129,52 @@ impl FlightService for FlightServiceImpl {
         &self,
         _request: Request<FlightDescriptor>,
     ) -> Result<Response<PollInfo>, Status> {
-        Err(Status::unimplemented("Implement poll_flight_info"))
+        let descriptor = _request.into_inner();
+        match DescriptorType::try_from(descriptor.r#type) {
+            Ok(DescriptorType::Cmd) => {
+                info!("Received command descriptor");
+                let mut skulk_query = SkulkQuery::decode(descriptor.cmd.clone()).unwrap();
+                let mut new_descriptor = descriptor.clone();
+                skulk_query.create_uuid();
+                new_descriptor.cmd = skulk_query.encode_to_vec().into();
+                let locs = self.get_dataset_locs(skulk_query.dataset);
+
+                // response to the client poll request
+                let mut poll_info = PollInfo::new().with_descriptor(FlightDescriptor {
+                    r#type: DescriptorType::Cmd as i32,
+                    cmd: Vec::<u8>::new().into(),
+                    path: vec!["".to_string()],
+                });
+                // to collect available endpoints
+                let mut flight_info = FlightInfo::new();
+
+                // relay poll request to all associated endpoints and collect responses
+                for loc in locs {
+                    let data_endpoint = Channel::from_shared(loc.uri).expect("invalid uri");
+                    let channel = data_endpoint.connect().await.expect("error connecting");
+                    let mut client = FlightClient::new(channel);
+                    let sub_poll_info = client.poll_flight_info(new_descriptor.clone()).await?;
+                    if let Some(info) = sub_poll_info.info {
+                        for endpoint in info.endpoint {
+                            flight_info = flight_info.with_endpoint(endpoint);
+                        }
+                    }
+                }
+                if !flight_info.endpoint.is_empty() {
+                    poll_info = poll_info.with_info(flight_info);
+                }
+                return Ok(Response::new(poll_info));
+            }
+            Ok(DescriptorType::Path) => {
+                return Err(Status::unimplemented(
+                    "path is not supported, use command type descriptor",
+                ))
+            }
+            Ok(DescriptorType::Unknown) => {
+                return Err(Status::unimplemented("use command type descriptor"))
+            }
+            Err(_) => return Err(Status::unimplemented("Implement get_flight_info")),
+        }
     }
 
     async fn get_schema(

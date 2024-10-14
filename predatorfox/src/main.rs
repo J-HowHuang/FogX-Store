@@ -18,6 +18,8 @@
 
 mod predatorfox;
 mod flight;
+use std::net::SocketAddr;
+
 use log::info;
 
 use tonic::transport::Server;
@@ -27,10 +29,11 @@ use arrow_flight::flight_service_server::FlightServiceServer;
 #[tokio::main]
 async fn main() -> Result<(), ()> {
     env_logger::init();
-    let service = flight::FlightServiceImpl::new().await.unwrap();
+    let location = "[::1]:50051".to_string();
+    let addr: SocketAddr = location.parse().unwrap();
+    let service = flight::FlightServiceImpl::new(location, "../collectorfox/collectorfox/db/dataset_db".to_string()).await.unwrap();
     service.setup_predator().await;
-    let addr = "[::1]:50051".parse().unwrap();
-
+    
     let svc = FlightServiceServer::new(service);
     info!("Starting server on {}", addr);
     Server::builder().add_service(svc).serve(addr).await.unwrap();

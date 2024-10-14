@@ -16,6 +16,7 @@
 // under the License.
 
 use crate::predatorfox;
+use crate::predatorfox::cmd::SkulkQuery;
 
 use arrow_flight::FlightEndpoint;
 use arrow_schema::{Schema, Field, DataType};
@@ -36,12 +37,14 @@ use std::convert::TryFrom;
 #[derive(Clone)]
 pub struct FlightServiceImpl {
     predator: predatorfox::Predator,
+    location: String,
 }
 
 impl FlightServiceImpl {
-    pub async fn new() -> Result<Self, ()> {
+    pub async fn new(location: String, db_uri: String) -> Result<Self, ()> {
         Ok(Self {
-            predator: predatorfox::Predator::new().await.unwrap(),
+            predator: predatorfox::Predator::new(db_uri).await.unwrap(),
+            location,
         })
     }
 
@@ -148,7 +151,55 @@ impl FlightService for FlightServiceImpl {
         &self,
         _request: Request<FlightDescriptor>,
     ) -> Result<Response<PollInfo>, Status> {
-        Err(Status::unimplemented("Implement poll_flight_info"))
+        let descriptor = _request.into_inner();
+        match DescriptorType::try_from(descriptor.r#type) {
+            Ok(DescriptorType::Cmd) => {
+                info!("Received command descriptor");
+                let cmd = predatorfox::cmd::Command::decode(descriptor.cmd).unwrap();
+                match predatorfox::cmd::CommandType::try_from(cmd.cmd_type) {
+                    Ok(predatorfox::cmd::CommandType::Query) => {
+                        info!("Received query command");
+                        let stream = self.predator.execute_query(&cmd.query).await.expect("query failed");
+                        let flight_info = FlightInfo::new()
+                            .try_with_schema(
+                                &stream[0].schema().clone()
+                            )
+                            .expect("encoding failed")
+                            .with_descriptor(FlightDescriptor {
+                                r#type: DescriptorType::Cmd as i32,
+                                cmd: Vec::<u8>::new().into(),
+                                path: vec!["".to_string()],
+                            })
+                            .with_endpoint(FlightEndpoint {
+                                ticket: Some(Ticket {
+                                    ticket: cmd.query.uuid.unwrap().into(),
+                                }),
+                                location: vec![Location {
+                                    uri: self.location.clone(),
+                                }],
+                                ..Default::default()
+                            })
+                            // .with_total_bytes(0)
+                            // .with_total_records(0)
+                            .with_ordered(false);
+                        return Ok(Response::new(PollInfo::new().with_info(flight_info)));
+                    }
+                    Ok(predatorfox::cmd::CommandType::Unknown) => {
+                        return Err(Status::unimplemented("unknown predatorfox command"))
+                    }
+                    Err(_) => return Err(Status::unimplemented("unknown predatorfox command")),
+                }
+            }
+            Ok(DescriptorType::Path) => {
+                return Err(Status::unimplemented(
+                    "path is not supported, use command type descriptor",
+                ))
+            }
+            Ok(DescriptorType::Unknown) => {
+                return Err(Status::unimplemented("use command type descriptor"))
+            }
+            Err(_) => return Err(Status::unimplemented("Implement get_flight_info")),
+        }
     }
 
     async fn get_schema(
