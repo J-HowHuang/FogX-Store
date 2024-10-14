@@ -1,0 +1,16 @@
+services:
+  predatorfox:
+    build: ./predatorfox
+    volumes:
+      - db-data:/app/db
+    ports:
+      - "50051:50051"
+  collectorfox:
+    build: ./collectorfox
+    volumes:
+      - db-data:/app/db
+    ports:
+      - "5000:5000"
+
+volumes:
+  db-data:
