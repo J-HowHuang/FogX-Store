@@ -7,42 +7,47 @@ import tensorflow_datasets as tfds
 import lancedb
 import json
 import requests
+import base64
 
+
+# The number of episodes to read from the GCS dataset (For testing only)
 GCS_TOP_K = 10
 
 app = Flask(__name__)
 
 
 # add a new dataset with post "" request
-def add_new_dataset_catalog(dataset):
+def add_new_dataset_catalog(dataset: str, schema: pa.Schema):
+    serialized_schema = schema.serialize().to_pybytes()
     url = "http://localhost:11632/dataset/" + dataset
-    response = requests.post(url)
-    return response.status_code == 200
+    response = requests.post(url, data=serialized_schema)
+    if response.status_code != 200:
+        raise Exception("Failed to add dataset to the dataset catalog")
 
 
 # add a new location to the dataset catalog with post "" request
-def add_new_location_to_dataset(location, dataset):
+def add_new_location_to_dataset(location: str, dataset: str):
     url = "http://localhost:11632/dataset/" + dataset + "/add"
     response = requests.post(url, data=location)
-    return response.status_code == 200
+    if response.status_code != 200:
+        raise Exception("Failed to add location to the dataset catalog")
     
 # create a new dataset table with the given schema
 @app.route('/create', methods=['POST'])
-def create_database():
+def create_table():
     try:
         uri = request.json.get('uri') # get the uri from the request
         dataset = request.json.get('dataset') # get the dataset name from the request
-        received_schema_json = request.json.get('fields') # get the schema from the request
-        received_schema = json.loads(received_schema_json)
-        fields = [
-            pa.field(field['name'], getattr(pa, field['type'])()) for field in received_schema['fields']
-        ]
-        schema = pa.schema(fields)
+        encoded_schema = request.json.get('schema') # get the schema from the request
+        # deserialize the schema
+        decoded_schema = base64.b64decode(encoded_schema)
+        # Deserialize the schema using pyarrow
+        schema = pa.ipc.read_schema(pa.BufferReader(decoded_schema))
         # connect to the lancedb with the given uri
         db = lancedb.connect(uri)
         #  create a table named as dataset
         db.create_table(dataset, schema=schema)
-        add_new_dataset_catalog(dataset) # add the dataset to the dataset catalog
+        add_new_dataset_catalog(dataset, schema) # add the dataset to the dataset catalog
         add_new_location_to_dataset(uri, dataset) # add the location to the dataset catalog
         return jsonify({"message": "Database created successfully"}), 200
     except Exception as e:
