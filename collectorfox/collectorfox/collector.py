@@ -9,7 +9,13 @@ import socket
 import json
 import requests
 import base64
-
+import os
+# Get database uri from the environment variable
+try:
+    DATABASE_URI = os.environ['DATABASE_URI']
+except KeyError:
+    print("DATABASE_URI environment variable is not set")
+    exit(1)
 
 # The number of episodes to read from the GCS dataset (For testing only)
 GCS_TOP_K = 10
@@ -17,9 +23,16 @@ GCS_TOP_K = 10
 app = Flask(__name__)
 
 def get_server_ip():
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    return ip_address
+    # try get ip from the environment variable
+    try:
+        print("Getting ip from the environment variable")
+        ip_address = os.environ['SERVER_IP']
+        return ip_address
+    except KeyError:
+        print("Getting ip from the socket")
+        hostname = socket.gethostname()
+        ip_address = socket.gethostbyname(hostname)
+        return ip_address
 
 # add a new dataset with post "" request
 def add_new_dataset_catalog(dataset: str, schema: pa.Schema):
@@ -41,7 +54,7 @@ def add_new_location_to_dataset(dataset: str):
 @app.route('/create', methods=['POST'])
 def create_table():
     try:
-        uri = request.json.get('uri') # get the uri from the request
+        uri = DATABASE_URI
         dataset = request.json.get('dataset') # get the dataset name from the request
         encoded_schema = request.json.get('schema') # get the schema from the request
         # deserialize the schema
@@ -61,7 +74,7 @@ def create_table():
 @app.route('/write', methods=['POST'])
 def add_data_to_lancedb(): 
     try:
-        uri = request.json.get('uri')
+        uri = DATABASE_URI
         dataset = request.json.get('dataset')
         ds_path = request.json.get('ds_path') 
         
