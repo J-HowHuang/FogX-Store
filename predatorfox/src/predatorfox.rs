@@ -1,6 +1,8 @@
+use cmd::SkulkQuery;
+use lancedb::arrow::IntoArrow;
 use lancedb::connection::Connection;
 use lancedb::index::Index;
-use lancedb::query::{ExecutableQuery, QueryBase};
+use lancedb::query::{ExecutableQuery, QueryBase, Select};
 use lancedb::{connect, Result, Table as LanceDbTable};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -15,9 +17,8 @@ pub struct Predator {
 }
 
 impl Predator {
-    pub async fn new() -> Result<Self> {
-        let uri = "data/sample-lancedb";
-        let lance_conn = connect(uri).execute().await?;
+    pub async fn new(db_uri: String) -> Result<Self> {
+        let lance_conn = connect(&db_uri).execute().await?;
         Ok(Self { lance_conn })
     }
 
@@ -31,6 +32,26 @@ impl Predator {
         // --8<-- [start:create_index]
         table.create_index(&["vector"], Index::Auto).execute().await
         // --8<-- [end:create_index]
+    }
+
+    pub async fn execute_query(&self, query: &SkulkQuery) -> Result<Vec<RecordBatch>> {
+        // --8<-- [start:execute_query]
+        let tbl = self.lance_conn.open_table(query.dataset.clone()).execute().await?;
+        let mut lance_query = tbl.query();
+        if !query.columns.is_empty() {
+            lance_query = lance_query.select(Select::Columns(query.columns.clone()));
+        } else {
+            lance_query = lance_query.select(Select::All);
+        }
+        if let Some(predicates) = query.predicates.clone() {
+            lance_query = lance_query.only_if(predicates);
+        }
+        if let Some(limit) = query.limit {
+            lance_query = lance_query.limit(limit.try_into().expect("limit must be positive"));
+        }
+        let stream = lance_query.execute().await.expect("query failed");
+        stream.try_collect().await
+        // --8<-- [end:execute_query]
     }
 
     pub async fn search(&self, tbl: &LanceDbTable) -> Result<Vec<RecordBatch>> {
