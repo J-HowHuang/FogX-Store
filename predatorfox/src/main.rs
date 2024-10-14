@@ -18,14 +18,8 @@
 
 mod predatorfox;
 mod flight;
-use env_logger;
 use log::info;
-use std::sync::Arc;
 
-use arrow_array::types::Float32Type;
-use arrow_array::{FixedSizeListArray, Int32Array, RecordBatch, RecordBatchIterator};
-use arrow_schema::{DataType, Field, Schema};
-use futures::TryStreamExt;
 use tonic::transport::Server;
 use arrow_flight::flight_service_server::FlightServiceServer;
 
