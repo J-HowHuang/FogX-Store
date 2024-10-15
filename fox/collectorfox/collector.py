@@ -31,7 +31,11 @@ def add_new_location_to_dataset(dataset: str):
     response = requests.post(url, data=os.environ.get("HOST_IP_ADDR", "0.0.0.0"))
     if response.status_code != 200:
         raise Exception("Failed to add location to the dataset catalog")
-    
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"message": "Collector is running"}), 200
+
 # create a new dataset table with the given schema
 @app.route('/create', methods=['POST'])
 def create_table():
