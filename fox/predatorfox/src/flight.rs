@@ -17,8 +17,7 @@
 
 use crate::predatorfox;
 use std::collections::HashMap;
-use std::cell::{Cell, RefCell};
-use std::sync::{Mutex, RwLock};
+use std::sync::RwLock;
 use std::pin::Pin;
 
 use arrow_array::RecordBatch;

@@ -18,15 +18,13 @@
 use crate::catalog;
 use crate::predatorfox::cmd::{Command, CommandType, SkulkQuery};
 
-use arrow_flight::{FlightClient, FlightEndpoint};
-use axum::body::Bytes;
+use arrow_flight::FlightClient;
 use catalog::Catalog;
 use futures::stream::BoxStream;
 use log::info;
 use prost::Message;
 use std::sync::{Arc, Mutex};
-use std::task::Poll;
-use tonic::transport::{channel, Channel};
+use tonic::transport::Channel;
 use tonic::{Request, Response, Status, Streaming};
 
 use arrow_flight::flight_descriptor::DescriptorType;
