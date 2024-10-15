@@ -65,7 +65,7 @@ services:
     environment:
       - HOST_IP_ADDR=172.22.0.3
       - SKULK_IP_ADDR=172.22.0.4
-  test_client:
+  test_client_script:
     build: ./tests
     environment:
       - SKULK_URL=172.22.0.4
@@ -81,6 +81,14 @@ services:
         condition: service_started
       predatorfox_2:
         condition: service_started
+    networks:
+      - skulk-net
+  test_client_node:
+    build: ./tests
+    command:
+    - /bin/sh
+    - -c
+    - "tail -f /dev/null"
     networks:
       - skulk-net
 volumes:
