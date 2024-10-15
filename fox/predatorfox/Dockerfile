@@ -9,13 +9,18 @@ WORKDIR /app
 # Copy the Cargo.toml and Cargo.lock files to the container
 COPY Cargo.toml Cargo.lock ./
 
+RUN mkdir src && touch src/lib.rs
+
+COPY src/build.rs src/cmd.proto ./src/
+RUN cargo build --release
+
 # Copy the source code to the container
 COPY src ./src
 
 # Build the application
 RUN cargo build --release
 
-RUN mkdir -p /app/db
+RUN mkdir -p /app/data
 
 # Set the entrypoint command to run the application
 CMD ["./target/release/predatorfox"]

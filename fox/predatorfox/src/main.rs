@@ -21,6 +21,7 @@ mod flight;
 use std::net::SocketAddr;
 
 use log::info;
+use std::env;
 
 use tonic::transport::Server;
 use arrow_flight::flight_service_server::FlightServiceServer;
@@ -29,9 +30,9 @@ use arrow_flight::flight_service_server::FlightServiceServer;
 #[tokio::main]
 async fn main() -> Result<(), ()> {
     env_logger::init();
-    let location = "[::1]:50051".to_string();
+    let location = format!("{}:50051", env::var("HOST_IP_ADDR").unwrap_or("0.0.0.0".to_string()));
     let addr: SocketAddr = location.parse().unwrap();
-    let service = flight::FlightServiceImpl::new(location, "../collectorfox/collectorfox/db/dataset_db".to_string()).await.unwrap();
+    let service = flight::FlightServiceImpl::new(location, "./data/dataset_db".to_string()).await.unwrap();
     service.setup_predator().await;
     
     let svc = FlightServiceServer::new(service);

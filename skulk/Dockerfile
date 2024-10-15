@@ -11,6 +11,11 @@ WORKDIR /app
 # Copy the Cargo.toml and Cargo.lock files to the container
 COPY Cargo.toml Cargo.lock ./
 
+RUN mkdir src && touch src/lib.rs
+COPY src/catalog.proto src/build.rs src/cmd.proto ./src/
+
+RUN cargo build --release
+
 # Copy the source code to the container
 COPY src ./src
 

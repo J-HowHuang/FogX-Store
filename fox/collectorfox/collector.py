@@ -5,7 +5,7 @@ import pyarrow as pa
 from collections import defaultdict
 import tensorflow_datasets as tfds
 import lancedb
-import socket
+import os
 import json
 import requests
 import base64
@@ -16,15 +16,10 @@ GCS_TOP_K = 10
 
 app = Flask(__name__)
 
-def get_server_ip():
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    return ip_address
-
 # add a new dataset with post "" request
 def add_new_dataset_catalog(dataset: str, schema: pa.Schema):
     serialized_schema = schema.serialize().to_pybytes()
-    url = "http://localhost:11632/dataset/" + dataset
+    url = f"http://{os.environ.get('SKULK_IP_ADDR')}:11632/dataset/" + dataset
     response = requests.post(url, data=serialized_schema)
     if response.status_code != 200:
         raise Exception("Failed to add dataset to the dataset catalog")
@@ -32,8 +27,8 @@ def add_new_dataset_catalog(dataset: str, schema: pa.Schema):
 
 # add a new location to the dataset catalog with post "" request
 def add_new_location_to_dataset(dataset: str):
-    url = "http://localhost:11632/dataset/" + dataset + "/add"
-    response = requests.post(url, data=get_server_ip())
+    url = f"http://{os.environ.get('SKULK_IP_ADDR')}:11632/dataset/" + dataset + "/add"
+    response = requests.post(url, data=os.environ.get("HOST_IP_ADDR", "0.0.0.0"))
     if response.status_code != 200:
         raise Exception("Failed to add location to the dataset catalog")
     
@@ -100,6 +95,6 @@ def add_data_to_lancedb():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host=os.environ.get("HOST_IP_ADDR", "0.0.0.0"), port=11635)
     
 

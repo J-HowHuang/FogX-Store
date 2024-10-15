@@ -16,7 +16,7 @@
 // under the License.
 
 use crate::catalog;
-use crate::predatorfox::cmd::SkulkQuery;
+use crate::predatorfox::cmd::{Command, CommandType, SkulkQuery};
 
 use arrow_flight::{FlightClient, FlightEndpoint};
 use axum::body::Bytes;
@@ -90,26 +90,30 @@ impl FlightService for FlightServiceImpl {
         match DescriptorType::try_from(descriptor.r#type) {
             Ok(DescriptorType::Cmd) => {
                 info!("Received command descriptor");
-                let skulk_query = SkulkQuery::decode(descriptor.cmd).unwrap();
+                let mut skulk_query = SkulkQuery::decode(descriptor.cmd.clone()).unwrap();
+                info!("Requesting dataset {:?}", skulk_query.dataset);
+                let mut new_descriptor = descriptor.clone();
+                skulk_query.create_uuid();
+                new_descriptor.cmd = Command{cmd_type: CommandType::Query.into(), query: skulk_query.clone()}.encode_to_vec().into();
                 let locs = self.get_dataset_locs(skulk_query.dataset);
 
-                let mut flight_info = FlightInfo::new()
-                    .with_descriptor(FlightDescriptor {
-                        r#type: DescriptorType::Cmd as i32,
-                        cmd: Vec::<u8>::new().into(),
-                        path: vec!["".to_string()],
-                    })
-                    // .with_total_bytes(0)
-                    // .with_total_records(0)
-                    .with_ordered(false);
+                // to collect available endpoints
+                let mut flight_info = FlightInfo::new().with_descriptor(FlightDescriptor {
+                    r#type: DescriptorType::Cmd as i32,
+                    cmd: Vec::<u8>::new().into(),
+                    path: vec!["".to_string()],
+                });
+
+                // relay poll request to all associated endpoints and collect responses
                 for loc in locs {
-                    flight_info = flight_info.with_endpoint(FlightEndpoint {
-                        ticket: Some(Ticket {
-                            ticket: Bytes::from("".as_bytes()),
-                        }),
-                        location: vec![loc],
-                        ..Default::default()
-                    })
+                    let data_endpoint = Channel::from_shared(format!("http://{}:50051", loc.uri)).expect("invalid uri");
+                    let channel = data_endpoint.connect().await.expect("error connecting");
+                    let mut client = FlightClient::new(channel);
+                    let sub_info = client.get_flight_info(new_descriptor.clone()).await?;
+                    for endpoint in sub_info.endpoint {
+                        flight_info = flight_info.with_endpoint(endpoint);
+                    }
+                    info!("Found endpoint {:?}", loc.uri);
                 }
                 return Ok(Response::new(flight_info));
             }

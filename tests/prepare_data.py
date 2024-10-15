@@ -1,9 +1,10 @@
 import requests
 import json
 import pyarrow as pa
+import base64
 
 # Define the API URL
-url = "http://127.0.0.1:5000/create"
+url = "http://127.0.0.1:50635/create"
 schema = pa.schema([
     pa.field("disclaimer", pa.string()),
     pa.field("file_path", pa.string()),
@@ -12,18 +13,14 @@ schema = pa.schema([
     pa.field("success_labeled_by", pa.string())
 ])
 
-
-fields_dict = {
-    "fields": [
-        {"name": field.name, "type": str(field.type) if str(field.type) != 'bool' else 'bool_'} for field in schema
-    ]
-}
+serialized_schema = schema.serialize().to_pybytes()
+encoded_schema = base64.b64encode(serialized_schema).decode('utf-8')
 
 # Define the payload
 data = {
-    "dataset": "ucsd_pick_and_place_dataset_converted_externally_to_rlds",
-    "uri": "./db/dataset_db",
-    "fields" : json.dumps(fields_dict)
+    "dataset": "ucsd_pick_and_place_dataset_converted_externally_to_rlds", # create a dataset table with this name
+    "uri": "./data/dataset_db", # load lancedb from this uri
+    "schema" : encoded_schema # user defined data schema
 }
 
 # Send the POST request
@@ -35,13 +32,13 @@ print(response.json())
 
 
 # Define the API URL
-url = "http://127.0.0.1:5000/write"
+url = "http://127.0.0.1:50635/write"
 
 # Define the payload
 data = {
     "ds_path": "gs://gresearch/robotics/ucsd_pick_and_place_dataset_converted_externally_to_rlds/0.1.0",
     "dataset" : "ucsd_pick_and_place_dataset_converted_externally_to_rlds",
-    "uri": "./db/dataset_db"
+    "uri": "./data/dataset_db"
 }
 
 # Send the POST request
@@ -51,15 +48,5 @@ response = requests.post(url, json=data)
 print(response.status_code)
 print(response.json())
 
-import lancedb
-uri = "../collectorfox/collectorfox/db/dataset_db"
-db = lancedb.connect(uri)
-tbl = db.open_table("ucsd_pick_and_place_dataset_converted_externally_to_rlds")
-print(tbl.to_arrow())
-
-result = (
-    tbl.search()
-    .where("success = true", prefilter=True)
-    .to_arrow()
-)
-print(result)
+response = requests.get("http://0.0.0.0:11632/datasets")
+print(response.content)

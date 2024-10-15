@@ -14,7 +14,7 @@ async fn main() -> Result<(), ()> {
     cat.init_catalog().unwrap();
     let shared_cat = Arc::new(Mutex::new(cat));
 
-    let addr: std::net::SocketAddr = "[::1]:50052".parse().unwrap();
+    let addr: std::net::SocketAddr = "0.0.0.0:50052".parse().unwrap();
     let flight = flight::FlightServiceImpl::new(shared_cat.clone());
     let svc = FlightServiceServer::new(flight);
     info!("Starting server on {}", addr);

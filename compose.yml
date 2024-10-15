@@ -1,0 +1,69 @@
+services:
+  skulk:
+    build: ./skulk
+    ports:
+      - "50052:50052"
+      - "11632:11632"
+    volumes:
+      - skulk-data:/app/db
+    networks:
+      skulk-net:
+        ipv4_address: "172.18.47.4"
+    environment:
+      - RUST_LOG=info
+  predatorfox_1:
+    build: ./fox/predatorfox
+    volumes:
+      - db-data-1:/app/data
+    ports:
+      - "50051:50051"
+      - "50635:11635"
+    networks:
+      skulk-net:
+        ipv4_address: "172.18.47.2"
+    environment:
+      - HOST_IP_ADDR=172.18.47.2
+      - RUST_LOG=info
+  collectorfox_1:
+    build: ./fox/collectorfox
+    volumes:
+      - db-data-1:/app/data
+    network_mode: "service:predatorfox_1"
+    environment:
+      - HOST_IP_ADDR=172.18.47.2
+      - SKULK_IP_ADDR=172.18.47.4
+  predatorfox_2:
+    build: ./fox/predatorfox
+    volumes:
+      - db-data-2:/app/data
+    ports:
+      - "51051:50051"
+      - "51635:11635"
+    networks:
+      skulk-net:
+        ipv4_address: "172.18.47.3"
+    environment:
+      - HOST_IP_ADDR=172.18.47.3
+      - RUST_LOG=info
+  collectorfox_2:
+    build: ./fox/collectorfox
+    volumes:
+      - db-data-2:/app/data
+    network_mode: "service:predatorfox_2"
+    environment:
+      - HOST_IP_ADDR=172.18.47.3
+      - SKULK_IP_ADDR=172.18.47.4
+
+volumes:
+  db-data-1:
+  db-data-2:
+  skulk-data:
+
+
+networks:
+  skulk-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.47.0/24

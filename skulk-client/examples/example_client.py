@@ -6,12 +6,11 @@ import sys
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-client = SkulkClient("localhost:50052")
+client = SkulkClient("[::1]:50052")
 
 table = client.get_dataset(SkulkQuery(
-    dataset="demo_ds_2",
-    columns=[],
-    predicates="reward_count > 100"
+    dataset="ucsd_pick_and_place_dataset_converted_externally_to_rlds",
+    columns=[]
 ))
 
 print(table.to_pandas())

@@ -1,5 +1,5 @@
 use cmd::SkulkQuery;
-use lancedb::arrow::IntoArrow;
+use std::collections::HashMap;
 use lancedb::connection::Connection;
 use lancedb::index::Index;
 use lancedb::query::{ExecutableQuery, QueryBase, Select};
@@ -14,12 +14,13 @@ use futures::TryStreamExt;
 #[derive(Clone)]
 pub struct Predator {
     pub lance_conn: Connection,
+    pub ticket_store: HashMap<String, Vec<RecordBatch>>,
 }
 
 impl Predator {
     pub async fn new(db_uri: String) -> Result<Self> {
         let lance_conn = connect(&db_uri).execute().await?;
-        Ok(Self { lance_conn })
+        Ok(Self { lance_conn, ticket_store: HashMap::<String, Vec<RecordBatch>>::new() })
     }
 
     pub async fn get_schema(&self, table_name: &String) -> Result<SchemaRef> {
