@@ -13,6 +13,7 @@ message SkulkQuery {
     optional string predicates = 3;
     optional VectorQuery vector_query = 4; // if present with predicate, search for top_k similar rows satisfying predicates
     optional int32 limit = 5; // limit the number of results returned (this will dominate top_k if less than top_k)
+    optional string uuid = 6;
 }
 
 message VectorQuery {
