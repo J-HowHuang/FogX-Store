@@ -47,4 +47,5 @@ We have a limitation that each data node has to have a public IP to access. Ther
 ```bash
 # Run this to log into the shell with the dev environment
 docker exec -it fogx-store-test_client_node-1 /bin/bash
+root@84ed5f83c611:/app $ python example_client.py 172.26.0.4:50052
 ```

@@ -8,8 +8,10 @@ services:
       - skulk-data:/app/db
     networks:
       skulk-net:
-        ipv4_address: "172.22.0.4"
+        ipv4_address: "172.26.0.4"
     environment:
+      - RUST_LOG=info
+      - HOST_IP_ADDR=172.26.0.4
       - RUST_LOG=info
   predatorfox_1:
     build: ./fox/predatorfox
@@ -20,9 +22,9 @@ services:
       - "50635:11635"
     networks:
       skulk-net:
-        ipv4_address: "172.22.0.2"
+        ipv4_address: "172.26.0.2"
     environment:
-      - HOST_IP_ADDR=172.22.0.2
+      - HOST_IP_ADDR=172.26.0.2
       - RUST_LOG=info
   collectorfox_1:
     build: ./fox/collectorfox
@@ -36,8 +38,8 @@ services:
       - db-data-1:/app/data
     network_mode: "service:predatorfox_1"
     environment:
-      - HOST_IP_ADDR=172.22.0.2
-      - SKULK_IP_ADDR=172.22.0.4
+      - HOST_IP_ADDR=172.26.0.2
+      - SKULK_IP_ADDR=172.26.0.4
   predatorfox_2:
     build: ./fox/predatorfox
     volumes:
@@ -47,9 +49,9 @@ services:
       - "51635:11635"
     networks:
       skulk-net:
-        ipv4_address: "172.22.0.3"
+        ipv4_address: "172.26.0.3"
     environment:
-      - HOST_IP_ADDR=172.22.0.3
+      - HOST_IP_ADDR=172.26.0.3
       - RUST_LOG=info
   collectorfox_2:
     build: ./fox/collectorfox
@@ -63,13 +65,13 @@ services:
       - db-data-2:/app/data
     network_mode: "service:predatorfox_2"
     environment:
-      - HOST_IP_ADDR=172.22.0.3
-      - SKULK_IP_ADDR=172.22.0.4
+      - HOST_IP_ADDR=172.26.0.3
+      - SKULK_IP_ADDR=172.26.0.4
   test_client_script:
     build: ./tests
     environment:
-      - SKULK_URL=172.22.0.4
-      - COLLECTOR_URL=172.22.0.3
+      - SKULK_URL=172.26.0.4
+      - COLLECTOR_URL=172.26.0.3
     depends_on:
       skulk:
         condition: service_started
@@ -91,6 +93,17 @@ services:
     - "tail -f /dev/null"
     networks:
       - skulk-net
+    depends_on:
+      skulk:
+        condition: service_started
+      collectorfox_1:
+        condition: service_healthy
+      collectorfox_2:
+        condition: service_healthy
+      predatorfox_1:
+        condition: service_started
+      predatorfox_2:
+        condition: service_started
 volumes:
   db-data-1:
   db-data-2:
@@ -103,5 +116,5 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.22.0.0/16
-          gateway: "172.22.0.1"
+        - subnet: 172.26.0.0/16
+          gateway: "172.26.0.1"
