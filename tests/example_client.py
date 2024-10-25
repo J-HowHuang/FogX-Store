@@ -29,3 +29,15 @@ if __name__ == "__main__":
     ))
     
     print(table.to_pandas())
+    
+    table = client.get_dataset(SkulkQuery(
+        dataset="cmu_stretch",
+        columns=[],
+        vector_query=VectorQuery(
+            column="language_embedding",
+            text_query="hello world",
+            top_k=3
+        )
+    ))
+    
+    print(table.to_pandas())

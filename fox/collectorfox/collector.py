@@ -9,6 +9,9 @@ import os
 import json
 import requests
 import base64
+from lancedb.embeddings import get_registry
+from lancedb.pydantic import LanceModel, Vector
+
 
 
 # The number of episodes to read from the GCS dataset (For testing only)
@@ -49,6 +52,10 @@ def create_table():
         schema = pa.ipc.read_schema(pa.BufferReader(decoded_schema))
         # connect to the lancedb with the given uri
         db = lancedb.connect(uri)
+        # if "language_instruction" in schema.names:
+        #     registry = get_registry()
+        #     transformer = registry.get("sentence-transformers").create()
+        #     schema = schema.with_metadata(tmp_schema.metadata)
         #  create a table named as dataset
         db.create_table(dataset, schema=schema)
         add_new_dataset_catalog(dataset, schema) # add the dataset to the dataset catalog
@@ -87,6 +94,13 @@ def add_data_to_lancedb():
                 if isinstance(value, bytes): # serialize the bytes tensor
                     value = str(value)
                 episode_table[key] = [value]
+            first_step = next(iter(episode['steps']))
+            embedding = first_step.get("language_embedding", None)
+            instruction = first_step.get("language_instruction", None)
+            if embedding != None and instruction != None:
+                episode_table["language_embedding"] = [embedding.numpy()]
+                episode_table["language_instruction"] = [instruction.numpy()]
+                
             arrow_row = pa.table(episode_table)
             tbl.add(arrow_row)
         

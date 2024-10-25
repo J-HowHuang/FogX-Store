@@ -18,7 +18,7 @@ message SkulkQuery {
 
 message VectorQuery {
     required string column = 1;
-    repeated float target_vector = 2;
+    required string text_query = 2;
     required int32 top_k = 3;
 }
 

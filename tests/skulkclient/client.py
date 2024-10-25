@@ -32,7 +32,7 @@ class SkulkClient:
         logger.debug("=== Endpoints ===")
         logger.debug(flight.endpoints)
         logger.debug("==============")
-
+        result = []
         for endpoint in flight.endpoints:
             logger.debug(f"Endpoint: {endpoint.ticket}")
             for loc in endpoint.locations:
@@ -40,6 +40,6 @@ class SkulkClient:
                 client = pyarrow.flight.connect(loc)
                 reader = client.do_get(endpoint.ticket)
                 read_table = reader.read_all()
-
-                return read_table
+                result.append(read_table)
+        return pa.concat_tables(result)
     

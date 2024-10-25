@@ -101,7 +101,7 @@ impl FlightService for FlightServiceImpl {
                     cmd: Vec::<u8>::new().into(),
                     path: vec!["".to_string()],
                 });
-
+                info!("Found endpoints {:?}", locs);
                 // relay poll request to all associated endpoints and collect responses
                 for loc in locs {
                     let data_endpoint = Channel::from_shared(format!("http://{}:50051", loc.uri)).expect("invalid uri");
@@ -111,8 +111,8 @@ impl FlightService for FlightServiceImpl {
                     for endpoint in sub_info.endpoint {
                         flight_info = flight_info.with_endpoint(endpoint);
                     }
-                    info!("Found endpoint {:?}", loc.uri);
                 }
+                info!("flight info: {:?}", flight_info);
                 return Ok(Response::new(flight_info));
             }
             Ok(DescriptorType::Path) => {

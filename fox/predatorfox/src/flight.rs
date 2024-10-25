@@ -30,6 +30,8 @@ use log::info;
 use prost::Message;
 use lancedb::error::Error;
 use tonic::{Request, Response, Status, Streaming};
+use tonic_health::server::HealthReporter;
+use arrow_flight::flight_service_server::FlightServiceServer;
 
 use arrow_flight::flight_descriptor::DescriptorType;
 use arrow_flight::{
@@ -46,12 +48,14 @@ pub struct FlightServiceImpl {
 }
 
 impl FlightServiceImpl {
-    pub async fn new(location: String, db_uri: String) -> Result<Self, ()> {
-        Ok(Self {
+    pub async fn new(location: String, db_uri: String, mut health_reporter: HealthReporter) -> Result<Self, ()> {
+        let svc = Ok(Self {
             predator: predatorfox::Predator::new(db_uri).await.unwrap(),
             location,
             ticket_store: RwLock::new(HashMap::<String, Vec<RecordBatch>>::new()),
-        })
+        });
+        health_reporter.set_serving::<FlightServiceServer<FlightServiceImpl>>();
+        svc
     }
 
     pub async fn setup_predator(&self) {
