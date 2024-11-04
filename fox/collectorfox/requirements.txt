@@ -5,3 +5,4 @@ pyarrow==17.0.0
 Requests==2.32.3
 tensorflow==2.17.0
 tensorflow_datasets==4.9.6
+fastembed==0.4.1
