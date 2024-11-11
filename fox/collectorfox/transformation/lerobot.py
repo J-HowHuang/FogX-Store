@@ -89,7 +89,9 @@ def image_to_bytes(image: Image.Image, format="PNG"):
     # Convert image to bytes
     buffer = io.BytesIO()
     image.save(buffer, format=format)
-    return buffer.getvalue()
+    bytes = buffer.getvalue()
+    del buffer
+    return bytes
 
 def group_lerobot_steps_with_episodes(dataset):
     # map episode index to the dataset
