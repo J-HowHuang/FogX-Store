@@ -27,6 +27,8 @@ COL_TO_MODEL = {
     # example: "language_instruction": "nomic-ai/nomic-embed-text-v1.5"
 }
 
+PARQUET_PATH = os.getenv('PARQUET_PATH', './../../_datasets/parquet')  # Default to 'localhost' if not set
+
 DEFAULT_RLDS_SCHEMA = pa.schema([
     ("observation@images@image", pa.binary()),
     ("language_instruction", pa.string()),
@@ -176,6 +178,76 @@ def add_data_from_rlds():
         print(dataset.keys())
         dataset = {k.replace('.', '@'): v for k, v in dataset.items()}
         tbl.add(pa.table(dataset))
+                    
+        return jsonify({"message": "Dataset written successfully"}), 200
+    
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    
+@app.route('/write', methods=['POST'])
+def add_data_to_lancedb(): 
+    try:
+        uri = request.json.get('uri')
+        dataset = request.json.get('dataset')
+        ds_path = request.json.get('ds_path') 
+        
+        # Connect to LanceDB with the given URI
+        db = lancedb.connect(uri)
+        tbl = db.open_table(dataset)
+
+        if ds_path.startswith('gs://'):  # If the dataset is stored in GCS
+            print("Reading dataset from GCS")
+            b = tfds.builder_from_directory(builder_dir=ds_path)
+            ds = b.as_dataset(split='train[:{}]'.format(GCS_TOP_K))
+        else:  # If the dataset is stored locally
+            print("Reading dataset from local")
+            ds = tf.data.Dataset.load(ds_path)
+        
+        print("Writing dataset to LanceDB")
+        for episode in ds:
+            episode_index = get_episode_index_for_dataset(dataset)
+            episode_parquet_path = f"{PARQUET_PATH}/{dataset}/{episode_index}/steps.parquet"
+            step_data = defaultdict(list)
+
+            episode_table = {}
+            for key, value in episode['episode_metadata'].items():
+                value = value.numpy()
+                if isinstance(value, bytes):
+                    value = str(value)
+                episode_table[key] = [value]
+            
+            for step in episode['steps']:
+                for key, value in step.items():
+                    if key == "observation":
+                        image_tensor = value.get("image")
+                        image_bytes = tensor_to_bytes(image_tensor)
+                        step_data["image"].append(image_bytes)
+                    else:
+                        value = value.numpy()
+                        if isinstance(value, bytes):
+                            value = str(value)
+                        step_data[key].append(value)
+
+            arrow_table = pa.table(step_data)
+            os.makedirs(os.path.dirname(episode_parquet_path), exist_ok=True)
+            pq.write_table(arrow_table, episode_parquet_path)
+            print(f"Saved episode steps to {episode_parquet_path}")
+            
+            first_step = next(iter(episode['steps']))
+            instruction = first_step.get("language_instruction", None)
+            if instruction is not None:
+                instruction_text = instruction.numpy().decode('utf-8')
+                
+                # Embed the instruction using FastEmbed
+                embedder = COL_TO_MODEL["language_instruction"]
+                vector = list(embedder.embed(instruction_text))
+    
+                episode_table["language_instruction"] = [instruction_text]
+                episode_table["vector"] = vector  # Store as a list for Arrow compatibility
+            
+            episode_table["episode_path"] = [episode_parquet_path]
+            episode_arrow_row = pa.table(episode_table)
+            tbl.add(episode_arrow_row)
                     
         return jsonify({"message": "Dataset written successfully"}), 200
     
