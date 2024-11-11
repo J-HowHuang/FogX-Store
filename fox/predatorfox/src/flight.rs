@@ -54,7 +54,7 @@ impl FlightServiceImpl {
             location,
             ticket_store: RwLock::new(HashMap::<String, Vec<RecordBatch>>::new()),
         });
-        health_reporter.set_serving::<FlightServiceServer<FlightServiceImpl>>();
+        health_reporter.set_serving::<FlightServiceServer<FlightServiceImpl>>().await;
         svc
     }
 
@@ -231,7 +231,7 @@ impl FlightService for FlightServiceImpl {
         let first_batch = batches[0].clone();
         let schema = first_batch.schema_ref();
         let flight_data = batches_to_flight_data(schema, batches)
-            .map_err(|e| Status::new(400.into(), "cannot convert record batches"))?
+            .map_err(|_e| Status::new(400.into(), "cannot convert record batches"))?
             .into_iter()
             .map(Ok);
 

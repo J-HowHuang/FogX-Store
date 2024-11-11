@@ -37,7 +37,7 @@ def tensor_to_bytes(tensor):
 
 # Use uuid for episode index
 def get_episode_index_for_dataset(dataset_name):
-    return uuid.uuid4()
+    return uuid.uuid4().hex
 
 # # add a new dataset with post "" request
 def add_new_dataset_catalog(dataset: str, schema: pa.Schema):
@@ -72,6 +72,8 @@ def create_table():
         decoded_schema = base64.b64decode(encoded_schema)
         # Deserialize the schema using pyarrow
         schema = pa.ipc.read_schema(pa.BufferReader(decoded_schema))
+        schema = schema.append(pa.field("_episode_path", pa.string()))
+        schema = schema.append(pa.field("_episode_id", pa.string()))
         # connect to the lancedb with the given uri
         db = lancedb.connect(uri)
         # create col to model mapping
@@ -112,13 +114,13 @@ def add_data_to_lancedb():
             step_data = defaultdict(list)
 
             episode_table = {}
+            episode_table["_episode_id"] = [episode_index]
             for key, value in episode['episode_metadata'].items():
                 value = value.numpy()
                 if isinstance(value, bytes):
                     value = str(value)
                 episode_table[key] = [value]
-            
-            for step in episode['steps']:
+            for i, step in enumerate(episode['steps']):
                 for key, value in step.items():
                     if key == "observation":
                         image_tensor = value.get("image")
@@ -129,6 +131,8 @@ def add_data_to_lancedb():
                         if isinstance(value, bytes):
                             value = str(value)
                         step_data[key].append(value)
+                step_data["_episode_id"].append(episode_index)
+                step_data["_step_id"].append(i)
 
             arrow_table = pa.table(step_data)
             os.makedirs(os.path.dirname(episode_parquet_path), exist_ok=True)
@@ -147,7 +151,7 @@ def add_data_to_lancedb():
                 episode_table["language_instruction"] = [instruction_text]
                 episode_table["vector"] = vector  # Store as a list for Arrow compatibility
             
-            episode_table["episode_path"] = [episode_parquet_path]
+            episode_table["_episode_path"] = [episode_parquet_path]
             episode_arrow_row = pa.table(episode_table)
             tbl.add(episode_arrow_row)
                     

@@ -6,9 +6,11 @@ use lancedb::query::{ExecutableQuery, Query, QueryBase, Select, VectorQuery};
 use lancedb::{connect, Result, Table as LanceDbTable};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::fs::read;
+use std::vec;
 
-use arrow_array::RecordBatch;
-use arrow_schema::Schema;
+use arrow_array::{RecordBatch, StringArray, LargeBinaryArray, ArrayRef};
+use arrow_schema::{Schema, Field, DataType};
 use futures::TryStreamExt;
 
 pub struct Predator {
@@ -117,7 +119,12 @@ impl Predator {
             lance_query = LanceQuery::Query(tbl.query());
         }
         if !query.columns.is_empty() {
-            lance_query = lance_query.select(Select::Columns(query.columns.clone()));
+            let mut required_columns = vec!["_episode_id".to_string()];
+            if query.with_step_data {
+                required_columns.push("_episode_path".to_string());
+            }
+            lance_query = lance_query.select(Select::Columns(query.columns.iter().cloned().chain(required_columns.iter().cloned()).collect()));
+            
         } else {
             lance_query = lance_query.select(Select::All);
         }
@@ -131,7 +138,12 @@ impl Predator {
             LanceQuery::Query(query) => query.execute().await.expect("query failed"),
             LanceQuery::VectorQuery(query) => query.execute().await.expect("query failed"),
         };
-        stream.try_collect().await
+        let mut query_result = stream.try_collect().await.unwrap();
+        if query.with_step_data {
+            Self::collect_step_data(&mut query_result)
+        } else {
+            Ok(query_result)
+        }
         // --8<-- [end:execute_query]
     }
 
@@ -142,6 +154,40 @@ impl Predator {
             .execute()
             .await
         // --8<-- [end:create_empty_table]
+    }
+
+    fn collect_step_data(query_result: &mut Vec<RecordBatch>) -> Result<Vec<RecordBatch>> {
+        let mut step_data = Vec::<RecordBatch>::new();
+        for batch in query_result {
+            let episode_path_idx = batch.schema_ref().column_with_name("_episode_path").unwrap().0;
+            let pq_paths = batch.remove_column(episode_path_idx);
+            let pq_paths_iter = pq_paths
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap()
+                .iter();
+            
+            let mut byte_array = Vec::new();
+            for path in pq_paths_iter {
+                if let Some(path) = path {
+                    let content = read(path).unwrap();
+                    byte_array.push(Some(content));
+                } else {
+                    byte_array.push(None);
+                }
+            }
+            let binary_column = Arc::new(LargeBinaryArray::from_opt_vec(byte_array.iter().map(|opt: &Option<Vec<u8>>| opt.as_deref()).collect())) as ArrayRef;
+            let new_field = Arc::new(Field::new("step_data", DataType::LargeBinary, true));
+            let updated_schema = Arc::new(Schema::new(
+                batch.schema().fields().iter().cloned().chain(std::iter::once(new_field)).collect::<Vec<Arc<Field>>>()
+            ));
+            let updated_record_batch = RecordBatch::try_new(
+                updated_schema,
+                batch.columns().iter().cloned().chain(std::iter::once(binary_column)).collect()
+            )?;
+            step_data.push(updated_record_batch);
+        }
+        Ok(step_data)
     }
 }
 

@@ -22,6 +22,7 @@ services:
       start_period: 60s
     volumes:
       - db-data-1:/app/data
+      - pq-data-1:/app/data/parquets
     ports:
       - "50051:50051"
       - "50635:11635"
@@ -42,10 +43,12 @@ services:
       start_period: 10s
     volumes:
       - db-data-1:/app/data
+      - pq-data-1:/app/data/parquets
     network_mode: "service:predatorfox_1"
     environment:
       - HOST_IP_ADDR=172.26.0.2
       - SKULK_IP_ADDR=172.26.0.4
+      - PARQUET_PATH=/app/data/parquets
   predatorfox_2:
     build: ./fox/predatorfox
     healthcheck:
@@ -56,6 +59,7 @@ services:
       start_period: 60s
     volumes:
       - db-data-2:/app/data
+      - pq-data-2:/app/data/parquets
     ports:
       - "51051:50051"
       - "51635:11635"
@@ -76,10 +80,12 @@ services:
       start_period: 10s
     volumes:
       - db-data-2:/app/data
+      - pq-data-2:/app/data/parquets
     network_mode: "service:predatorfox_2"
     environment:
       - HOST_IP_ADDR=172.26.0.3
       - SKULK_IP_ADDR=172.26.0.4
+      - PARQUET_PATH=/app/data/parquets
   test_client_script:
     build: ./tests
     environment:
@@ -121,6 +127,8 @@ services:
 volumes:
   db-data-1:
   db-data-2:
+  pq-data-1:
+  pq-data-2:
   skulk-data:
   model_cache:
 

@@ -22,7 +22,7 @@ COPY src ./src
 # Build the application
 RUN cargo build --release
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data/parquets
 
 # Set the entrypoint command to run the application
 CMD ["./target/release/predatorfox"]

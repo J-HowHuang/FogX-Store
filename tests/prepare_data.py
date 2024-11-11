@@ -13,7 +13,6 @@ if __name__ == "__main__":
         pa.field("n_transitions", pa.int32()),
         pa.field("success", pa.bool_()),  # Corrected boolean field
         pa.field("success_labeled_by", pa.string()),
-        pa.field("episode_path", pa.string()),
         pa.field("vector", pa.list_(pa.float32(), 384)),
         pa.field("language_instruction", pa.string())
     ],metadata={
@@ -58,7 +57,6 @@ if __name__ == "__main__":
     url_2 = f"{sys.argv[2]}/create"
     schema = pa.schema([
         pa.field("file_path", pa.string()),
-        pa.field("episode_path", pa.string()),
         pa.field("vector", pa.list_(pa.float32(), 384)),
         pa.field("language_instruction", pa.string())
         ],
