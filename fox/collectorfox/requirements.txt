@@ -6,3 +6,5 @@ Requests==2.32.3
 tensorflow==2.17.0
 tensorflow_datasets==4.9.6
 fastembed==0.4.1
+tensorflow_graphics==2021.12.3
+datasets==3.1.0
