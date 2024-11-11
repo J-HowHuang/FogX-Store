@@ -15,7 +15,7 @@ from lancedb.pydantic import LanceModel, Vector
 from fastembed import TextEmbedding
 
 # The number of episodes to read from the GCS dataset (For testing only)
-GCS_TOP_K = 500
+GCS_TOP_K = 5
 # Get environment variables
 PARQUET_PATH = os.getenv('PARQUET_PATH', './../../_datasets/parquet')  # Default to 'localhost' if not set
 SKLK_IP_ADDR = os.environ.get('SKULK_IP_ADDR') # get the skulk ip address from the environment variable
@@ -76,7 +76,8 @@ def create_table():
         db = lancedb.connect(uri)
         # create col to model mapping
         for col, model_name in schema.metadata.items():
-            COL_TO_MODEL[col.decode('utf-8')] = TextEmbedding(model_name=model_name.decode('utf-8'))
+            if col.decode('utf-8').endswith("_model"):
+                COL_TO_MODEL[col.decode('utf-8')[:-6]] = TextEmbedding(model_name=model_name.decode('utf-8'))
         # create a new table with the given schema
         db.create_table(dataset, schema=schema)
         add_new_dataset_catalog(dataset, schema) # add the dataset to the dataset catalog

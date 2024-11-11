@@ -1,10 +1,10 @@
 use cmd::SkulkQuery;
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use embed_anything::{embed_query, embeddings::embed::Embedder};
 use lancedb::connection::Connection;
 use lancedb::index::scalar::FullTextSearchQuery;
-use lancedb::index::vector;
 use lancedb::query::{ExecutableQuery, Query, QueryBase, Select, VectorQuery};
 use lancedb::{connect, Result, Table as LanceDbTable};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use arrow_array::RecordBatch;
@@ -13,7 +13,7 @@ use futures::TryStreamExt;
 
 pub struct Predator {
     pub lance_conn: Connection,
-    text_embed: TextEmbedding,
+    embed_models: HashMap<String, Arc<Embedder>>,
 }
 
 enum LanceQuery {
@@ -65,13 +65,23 @@ impl QueryBase for LanceQuery {
 impl Predator {
     pub async fn new(db_uri: String) -> Result<Self> {
         let lance_conn = connect(&db_uri).execute().await?;
-        let text_embed = TextEmbedding::try_new(
-            InitOptions::new(EmbeddingModel::NomicEmbedTextV15).with_show_download_progress(true),
-        )
-        .expect("failed to initialize text embedding model");
+        let clip =
+            Embedder::from_pretrained_hf("clip", "openai/clip-vit-base-patch32", None).unwrap();
+        let clip: Arc<Embedder> = Arc::new(clip);
+        let all_mini =
+            Embedder::from_pretrained_hf("bert", "sentence-transformers/all-MiniLM-L6-v2", None)
+                .unwrap();
+        let all_mini: Arc<Embedder> = Arc::new(all_mini);
+        let embed_models = HashMap::from([
+            ("openai/clip-vit-base-patch32".to_string(), clip),
+            (
+                "sentence-transformers/all-MiniLM-L6-v2".to_string(),
+                all_mini,
+            ),
+        ]);
         Ok(Self {
             lance_conn,
-            text_embed,
+            embed_models,
         })
     }
 
@@ -84,15 +94,25 @@ impl Predator {
             .await?;
         let mut lance_query: LanceQuery;
         if let Some(vector_query) = query.vector_query.clone() {
-            let embedding = self
-                .text_embed
-                .embed(vec![vector_query.text_query], None)
-                .expect("embed failed");
+            let embedding = embed_query(
+                vec![vector_query.text_query],
+                &self.embed_models[&vector_query.embed_model.unwrap()],
+                None,
+            )
+            .await
+            .unwrap()[0]
+                .embedding
+                .to_dense()
+                .unwrap();
             let vec_query = tbl
                 .query()
-                .nearest_to(&embedding[0][..512])
+                .nearest_to(embedding)
                 .expect("nearest_to failed");
-            lance_query = LanceQuery::VectorQuery(vec_query.limit(vector_query.top_k as usize).column(&vector_query.column));
+            lance_query = LanceQuery::VectorQuery(
+                vec_query
+                    .limit(vector_query.top_k as usize)
+                    .column(&vector_query.column),
+            );
         } else {
             lance_query = LanceQuery::Query(tbl.query());
         }

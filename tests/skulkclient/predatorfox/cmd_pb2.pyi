@@ -38,11 +38,13 @@ class SkulkQuery(_message.Message):
     def __init__(self, dataset: _Optional[str] = ..., columns: _Optional[_Iterable[str]] = ..., predicates: _Optional[str] = ..., vector_query: _Optional[_Union[VectorQuery, _Mapping]] = ..., limit: _Optional[int] = ..., uuid: _Optional[str] = ...) -> None: ...
 
 class VectorQuery(_message.Message):
-    __slots__ = ("column", "text_query", "top_k")
+    __slots__ = ("column", "text_query", "top_k", "embed_model")
     COLUMN_FIELD_NUMBER: _ClassVar[int]
     TEXT_QUERY_FIELD_NUMBER: _ClassVar[int]
     TOP_K_FIELD_NUMBER: _ClassVar[int]
+    EMBED_MODEL_FIELD_NUMBER: _ClassVar[int]
     column: str
     text_query: str
     top_k: int
-    def __init__(self, column: _Optional[str] = ..., text_query: _Optional[str] = ..., top_k: _Optional[int] = ...) -> None: ...
+    embed_model: str
+    def __init__(self, column: _Optional[str] = ..., text_query: _Optional[str] = ..., top_k: _Optional[int] = ..., embed_model: _Optional[str] = ...) -> None: ...

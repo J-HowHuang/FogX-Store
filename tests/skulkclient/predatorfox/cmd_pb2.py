@@ -24,19 +24,19 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tcmd.proto\x12\x0fpredatorfox.cmd\"e\n\x07\x43ommand\x12.\n\x08\x63md_type\x18\x01 \x02(\x0e\x32\x1c.predatorfox.cmd.CommandType\x12*\n\x05query\x18\x02 \x02(\x0b\x32\x1b.predatorfox.cmd.SkulkQuery\"\x93\x01\n\nSkulkQuery\x12\x0f\n\x07\x64\x61taset\x18\x01 \x02(\t\x12\x0f\n\x07\x63olumns\x18\x02 \x03(\t\x12\x12\n\npredicates\x18\x03 \x01(\t\x12\x32\n\x0cvector_query\x18\x04 \x01(\x0b\x32\x1c.predatorfox.cmd.VectorQuery\x12\r\n\x05limit\x18\x05 \x01(\x05\x12\x0c\n\x04uuid\x18\x06 \x01(\t\"@\n\x0bVectorQuery\x12\x0e\n\x06\x63olumn\x18\x01 \x02(\t\x12\x12\n\ntext_query\x18\x02 \x02(\t\x12\r\n\x05top_k\x18\x03 \x02(\x05*%\n\x0b\x43ommandType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\t\n\x05QUERY\x10\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tcmd.proto\x12\x0fpredatorfox.cmd\"e\n\x07\x43ommand\x12.\n\x08\x63md_type\x18\x01 \x02(\x0e\x32\x1c.predatorfox.cmd.CommandType\x12*\n\x05query\x18\x02 \x02(\x0b\x32\x1b.predatorfox.cmd.SkulkQuery\"\x93\x01\n\nSkulkQuery\x12\x0f\n\x07\x64\x61taset\x18\x01 \x02(\t\x12\x0f\n\x07\x63olumns\x18\x02 \x03(\t\x12\x12\n\npredicates\x18\x03 \x01(\t\x12\x32\n\x0cvector_query\x18\x04 \x01(\x0b\x32\x1c.predatorfox.cmd.VectorQuery\x12\r\n\x05limit\x18\x05 \x01(\x05\x12\x0c\n\x04uuid\x18\x06 \x01(\t\"U\n\x0bVectorQuery\x12\x0e\n\x06\x63olumn\x18\x01 \x02(\t\x12\x12\n\ntext_query\x18\x02 \x02(\t\x12\r\n\x05top_k\x18\x03 \x02(\x05\x12\x13\n\x0b\x65mbed_model\x18\x04 \x01(\t*%\n\x0b\x43ommandType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\t\n\x05QUERY\x10\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'cmd_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_COMMANDTYPE']._serialized_start=349
-  _globals['_COMMANDTYPE']._serialized_end=386
+  _globals['_COMMANDTYPE']._serialized_start=370
+  _globals['_COMMANDTYPE']._serialized_end=407
   _globals['_COMMAND']._serialized_start=30
   _globals['_COMMAND']._serialized_end=131
   _globals['_SKULKQUERY']._serialized_start=134
   _globals['_SKULKQUERY']._serialized_end=281
   _globals['_VECTORQUERY']._serialized_start=283
-  _globals['_VECTORQUERY']._serialized_end=347
+  _globals['_VECTORQUERY']._serialized_end=368
 # @@protoc_insertion_point(module_scope)

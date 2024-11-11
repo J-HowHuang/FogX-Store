@@ -31,6 +31,7 @@ services:
     environment:
       - HOST_IP_ADDR=172.26.0.2
       - RUST_LOG=info
+      - model_cache:/root/.cache/huggingface/
   collectorfox_1:
     build: ./fox/collectorfox
     healthcheck:
@@ -64,6 +65,7 @@ services:
     environment:
       - HOST_IP_ADDR=172.26.0.3
       - RUST_LOG=info
+      - model_cache:/root/.cache/huggingface/
   collectorfox_2:
     build: ./fox/collectorfox
     healthcheck:
@@ -120,6 +122,7 @@ volumes:
   db-data-1:
   db-data-2:
   skulk-data:
+  model_cache:
 
 
 networks:

@@ -6,6 +6,7 @@ use axum::{
 };
 use duckdb::{params, Connection, Result};
 use std::sync::{Arc, Mutex};
+use arrow_ipc::convert::try_schema_from_ipc_buffer;
 include!(concat!(env!("OUT_DIR"), "/catalog.cmd.rs"));
 
 pub struct Catalog {
@@ -79,6 +80,22 @@ impl Catalog {
             locs.push(loc.unwrap());
         }
         locs
+    }
+    pub fn get_embed_model_col(&self, dataset: String, column: String) -> (String, String) {
+        let mut stmt = self
+            .db_conn
+            .prepare("SELECT schema FROM catalog WHERE dataset = $1;")
+            .unwrap();
+        let schema_raw = stmt
+            .query_map(params![dataset], |row| row.get::<_, Vec<u8>>(0))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap();
+        log::info!("schema_raw: {:?}", schema_raw);
+        // Read schema from the metadata
+        let schema = try_schema_from_ipc_buffer(&schema_raw[..]).unwrap();
+        (schema.metadata().get(&format!("{}_model", &column)).unwrap().clone(), schema.metadata().get(&format!("{}_column", &column)).unwrap().clone())
     }
     pub fn list_all_endpoints(&self) -> Vec<String> {
         let mut endpoints = Vec::new();

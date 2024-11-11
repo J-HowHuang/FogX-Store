@@ -34,7 +34,7 @@ if __name__ == "__main__":
         dataset="cmu_stretch",
         columns=[],
         vector_query=VectorQuery(
-            column="language_embedding",
+            column="language_instruction",
             text_query="hello world",
             top_k=3
         )

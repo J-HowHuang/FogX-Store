@@ -92,6 +92,12 @@ impl FlightService for FlightServiceImpl {
                 info!("Requesting dataset {:?}", skulk_query.dataset);
                 let mut new_descriptor = descriptor.clone();
                 skulk_query.create_uuid();
+                if let Some(vector_query) = skulk_query.vector_query.clone() {
+                    info!("Requesting vector query {:?}", vector_query);
+                    let (embed_model, embed_col) = self.catalog.lock().unwrap().get_embed_model_col(skulk_query.dataset.clone(), vector_query.column.clone());
+                    skulk_query.vector_query.as_mut().unwrap().embed_model = Some(embed_model);
+                    skulk_query.vector_query.as_mut().unwrap().column = embed_col;
+                }
                 new_descriptor.cmd = Command{cmd_type: CommandType::Query.into(), query: skulk_query.clone()}.encode_to_vec().into();
                 let locs = self.get_dataset_locs(skulk_query.dataset);
 

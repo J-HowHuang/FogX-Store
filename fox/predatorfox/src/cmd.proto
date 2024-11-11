@@ -20,6 +20,7 @@ message VectorQuery {
     required string column = 1;
     required string text_query = 2;
     required int32 top_k = 3;
+    optional string embed_model = 4;
 }
 
 enum CommandType {

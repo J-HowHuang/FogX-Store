@@ -12,8 +12,14 @@ if __name__ == "__main__":
         pa.field("file_path", pa.string()),
         pa.field("n_transitions", pa.int32()),
         pa.field("success", pa.bool_()),  # Corrected boolean field
-        pa.field("success_labeled_by", pa.string())
-    ])
+        pa.field("success_labeled_by", pa.string()),
+        pa.field("episode_path", pa.string()),
+        pa.field("vector", pa.list_(pa.float32(), 384)),
+        pa.field("language_instruction", pa.string())
+    ],metadata={
+            "language_instruction_model" : "sentence-transformers/all-MiniLM-L6-v2",
+            "language_instruction_column" : "vector"
+            })
 
     serialized_schema = schema.serialize().to_pybytes()
     encoded_schema = base64.b64encode(serialized_schema).decode('utf-8')
@@ -52,9 +58,14 @@ if __name__ == "__main__":
     url_2 = f"{sys.argv[2]}/create"
     schema = pa.schema([
         pa.field("file_path", pa.string()),
-        pa.field("language_embedding", pa.list_(pa.float32(), 512)),
-        pa.field("language_instruction", pa.string()),
-    ])
+        pa.field("episode_path", pa.string()),
+        pa.field("vector", pa.list_(pa.float32(), 384)),
+        pa.field("language_instruction", pa.string())
+        ],
+        metadata={
+            "language_instruction_model" : "sentence-transformers/all-MiniLM-L6-v2",
+            "language_instruction_column" : "vector",
+        })
 
     serialized_schema = schema.serialize().to_pybytes()
     encoded_schema = base64.b64encode(serialized_schema).decode('utf-8')
