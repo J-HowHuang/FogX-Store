@@ -1,7 +1,7 @@
 import api
 from collector import collectorfox
-from transformation_impl import RTXPipeline
-from annotation_impl import TextAnnotator
+from transformation import RTXPipeline
+from annotation import TextAnnotator
 
 if __name__ == '__main__':
     collectorfox.register_transformation("cmu_stretch", "rtx", RTXPipeline(step_data_sample_col=["language_instruction", "observation"], step_data_sample_method="first"))

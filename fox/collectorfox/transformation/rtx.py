@@ -1,4 +1,4 @@
-from transformation import CollectorfoxTransformation
+from .base_transformation import CollectorfoxTransformation
 
 import tensorflow_datasets as tfds
 from collections import defaultdict

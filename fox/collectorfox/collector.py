@@ -1,7 +1,7 @@
 from flask import Flask
 from typing import Type, Dict, Tuple, List
 from transformation import CollectorfoxTransformation
-from annotator import CollectorfoxAnnotator
+from annotation import CollectorfoxAnnotator
 import os
 
 # The number of episodes to read from the GCS dataset (For testing only)

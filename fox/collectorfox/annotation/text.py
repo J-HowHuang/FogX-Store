@@ -1,4 +1,4 @@
-from annotator import CollectorfoxAnnotator
+from .base_annotator import CollectorfoxAnnotator
 from fastembed import TextEmbedding
 import numpy as np
 
