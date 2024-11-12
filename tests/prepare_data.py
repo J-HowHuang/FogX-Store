@@ -13,11 +13,11 @@ if __name__ == "__main__":
         pa.field("n_transitions", pa.int32()),
         pa.field("success", pa.bool_()),  # Corrected boolean field
         pa.field("success_labeled_by", pa.string()),
-        pa.field("vector", pa.list_(pa.float32(), 384)),
+        pa.field("language_embedding", pa.list_(pa.float32(), 384)),
         pa.field("language_instruction", pa.string())
     ],metadata={
             "language_instruction_model" : "sentence-transformers/all-MiniLM-L6-v2",
-            "language_instruction_column" : "vector"
+            "language_instruction_column" : "language_embedding"
             })
 
     serialized_schema = schema.serialize().to_pybytes()
@@ -25,8 +25,7 @@ if __name__ == "__main__":
 
     # Define the payload
     data = {
-        "dataset": "ucsd_pick_and_place_dataset_converted_externally_to_rlds", # create a dataset table with this name
-        "uri": "./data/dataset_db", # load lancedb from this uri
+        "dataset": "ucsd", # create a dataset table with this name
         "schema" : encoded_schema # user defined data schema
     }
 
@@ -43,9 +42,9 @@ if __name__ == "__main__":
 
     # Define the payload
     data = {
-        "ds_path": "gs://gresearch/robotics/ucsd_pick_and_place_dataset_converted_externally_to_rlds/0.1.0",
-        "dataset" : "ucsd_pick_and_place_dataset_converted_externally_to_rlds",
-        "uri": "./data/dataset_db"
+        "dataset": "ucsd",
+        "src_type": "rtx", # load lancedb from this uri
+        "src_uri": "gs://gresearch/robotics/ucsd_pick_and_place_dataset_converted_externally_to_rlds/0.1.0", # load lancedb from this uri
     }
 
     # Send the POST request
@@ -57,12 +56,12 @@ if __name__ == "__main__":
     url_2 = f"{sys.argv[2]}/create"
     schema = pa.schema([
         pa.field("file_path", pa.string()),
-        pa.field("vector", pa.list_(pa.float32(), 384)),
+        pa.field("language_embedding", pa.list_(pa.float32(), 384)),
         pa.field("language_instruction", pa.string())
         ],
         metadata={
             "language_instruction_model" : "sentence-transformers/all-MiniLM-L6-v2",
-            "language_instruction_column" : "vector",
+            "language_instruction_column" : "language_embedding",
         })
 
     serialized_schema = schema.serialize().to_pybytes()
@@ -71,7 +70,6 @@ if __name__ == "__main__":
     # Define the payload
     data = {
         "dataset": "cmu_stretch", # create a dataset table with this name
-        "uri": "./data/dataset_db", # load lancedb from this uri
         "schema" : encoded_schema # user defined data schema
     }
 
@@ -92,9 +90,9 @@ if __name__ == "__main__":
 
     # Define the payload
     data = {
-        "ds_path": "gs://gresearch/robotics/cmu_stretch/0.1.0",
+        "src_type": "rtx", # load lancedb from this uri
+        "src_uri": "gs://gresearch/robotics/cmu_stretch/0.1.0",
         "dataset" : "cmu_stretch",
-        "uri": "./data/dataset_db"
     }
 
     # Send the POST request

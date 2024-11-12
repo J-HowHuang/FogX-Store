@@ -14,9 +14,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application code into the container
-COPY collector.py .
+COPY ./ .
 RUN mkdir db
 RUN mkdir -p /app/data/parquets
 
 # Set the command to run the application
-CMD [ "python", "collector.py" ]
+CMD [ "python", "app.py" ]

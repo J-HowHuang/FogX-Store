@@ -54,7 +54,5 @@ class SkulkClient:
         res = res.remove_column(res.schema.get_field_index("step_data"))
         res = res.to_pandas()
         res["_episode_id"] = res["_episode_id"].astype(str)
-        print(res.head())
-        print(step_data.head())
         return res.merge(step_data, on="_episode_id")
     
