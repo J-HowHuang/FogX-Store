@@ -6,6 +6,8 @@ import numpy as np
 import pyarrow as pa
 import tensorflow as tf
 from typing import Literal, Optional, List
+from PIL import Image
+import io
 
 GCS_TOP_K=5
 
@@ -23,7 +25,10 @@ def get_step_data_content(step_data, column):
     if column == "observation":
         image_tensor = value.get("image")
         image_np = unpack_tensor(image_tensor)
-        return image_np.tobytes()
+        image = Image.fromarray(image_np)
+        buf = io.BytesIO()
+        image.save(buf, format='PNG')
+        return buf.getvalue()
     
     return unpack_tensor(value)
     

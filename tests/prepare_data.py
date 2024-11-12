@@ -14,7 +14,9 @@ if __name__ == "__main__":
         pa.field("success", pa.bool_()),  # Corrected boolean field
         pa.field("success_labeled_by", pa.string()),
         pa.field("language_embedding", pa.list_(pa.float32(), 384)),
-        pa.field("language_instruction", pa.string())
+        pa.field("language_instruction", pa.string()),
+        pa.field("clip_embedding", pa.list_(pa.float32(), 512)),
+        pa.field("observation", pa.binary())
     ],metadata={
             "language_instruction_model" : "sentence-transformers/all-MiniLM-L6-v2",
             "language_instruction_column" : "language_embedding"

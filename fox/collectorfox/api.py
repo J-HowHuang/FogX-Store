@@ -100,7 +100,6 @@ def add_data_to_lancedb():
                 episode_table[key] += value
             episode_table["_episode_id"] += [episode_index]
             episode_table["_episode_path"] += [episode_parquet_path]
-        print(episode_table)
         for src_col, target_col, annotator in collectorfox.annotators[dataset]:
             print(f"Annotating {src_col} to {target_col}")
             if src_col in episode_table:
