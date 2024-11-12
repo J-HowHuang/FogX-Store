@@ -22,25 +22,31 @@ class Command(_message.Message):
     def __init__(self, cmd_type: _Optional[_Union[CommandType, str]] = ..., query: _Optional[_Union[SkulkQuery, _Mapping]] = ...) -> None: ...
 
 class SkulkQuery(_message.Message):
-    __slots__ = ("dataset", "columns", "predicates", "vector_query", "limit")
+    __slots__ = ("dataset", "columns", "predicates", "vector_query", "limit", "uuid", "with_step_data")
     DATASET_FIELD_NUMBER: _ClassVar[int]
     COLUMNS_FIELD_NUMBER: _ClassVar[int]
     PREDICATES_FIELD_NUMBER: _ClassVar[int]
     VECTOR_QUERY_FIELD_NUMBER: _ClassVar[int]
     LIMIT_FIELD_NUMBER: _ClassVar[int]
+    UUID_FIELD_NUMBER: _ClassVar[int]
+    WITH_STEP_DATA_FIELD_NUMBER: _ClassVar[int]
     dataset: str
     columns: _containers.RepeatedScalarFieldContainer[str]
     predicates: str
     vector_query: VectorQuery
     limit: int
-    def __init__(self, dataset: _Optional[str] = ..., columns: _Optional[_Iterable[str]] = ..., predicates: _Optional[str] = ..., vector_query: _Optional[_Union[VectorQuery, _Mapping]] = ..., limit: _Optional[int] = ...) -> None: ...
+    uuid: str
+    with_step_data: bool
+    def __init__(self, dataset: _Optional[str] = ..., columns: _Optional[_Iterable[str]] = ..., predicates: _Optional[str] = ..., vector_query: _Optional[_Union[VectorQuery, _Mapping]] = ..., limit: _Optional[int] = ..., uuid: _Optional[str] = ..., with_step_data: bool = ...) -> None: ...
 
 class VectorQuery(_message.Message):
-    __slots__ = ("column", "target_vector", "top_k")
+    __slots__ = ("column", "text_query", "top_k", "embed_model")
     COLUMN_FIELD_NUMBER: _ClassVar[int]
-    TARGET_VECTOR_FIELD_NUMBER: _ClassVar[int]
+    TEXT_QUERY_FIELD_NUMBER: _ClassVar[int]
     TOP_K_FIELD_NUMBER: _ClassVar[int]
+    EMBED_MODEL_FIELD_NUMBER: _ClassVar[int]
     column: str
-    target_vector: _containers.RepeatedScalarFieldContainer[float]
+    text_query: str
     top_k: int
-    def __init__(self, column: _Optional[str] = ..., target_vector: _Optional[_Iterable[float]] = ..., top_k: _Optional[int] = ...) -> None: ...
+    embed_model: str
+    def __init__(self, column: _Optional[str] = ..., text_query: _Optional[str] = ..., top_k: _Optional[int] = ..., embed_model: _Optional[str] = ...) -> None: ...

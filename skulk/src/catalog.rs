@@ -1,9 +1,12 @@
-use axum::{
-    extract::{Path, State}, routing::{get, post}, Router
-};
 use axum::body::Bytes;
+use axum::{
+    extract::{Path, State},
+    routing::{get, post},
+    Router,
+};
 use duckdb::{params, Connection, Result};
 use std::sync::{Arc, Mutex};
+use arrow_ipc::convert::try_schema_from_ipc_buffer;
 include!(concat!(env!("OUT_DIR"), "/catalog.cmd.rs"));
 
 pub struct Catalog {
@@ -20,6 +23,7 @@ impl CatalogServer {
             .route("/", get(health_check))
             .route("/dataset/:name", post(register_dataset))
             .route("/dataset/:name/add", post(add_loc_to_ds))
+            .route("/datasets", get(list_all_endpoints))
             .with_state(catalog);
         Ok(CatalogServer { app })
     }
@@ -77,6 +81,39 @@ impl Catalog {
         }
         locs
     }
+    pub fn get_embed_model_col(&self, dataset: String, column: String) -> (String, String) {
+        let mut stmt = self
+            .db_conn
+            .prepare("SELECT schema FROM catalog WHERE dataset = $1;")
+            .unwrap();
+        let schema_raw = stmt
+            .query_map(params![dataset], |row| row.get::<_, Vec<u8>>(0))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap();
+        log::info!("schema_raw: {:?}", schema_raw);
+        // Read schema from the metadata
+        let schema = try_schema_from_ipc_buffer(&schema_raw[..]).unwrap();
+        (schema.metadata().get(&format!("{}_model", &column)).unwrap().clone(), schema.metadata().get(&format!("{}_column", &column)).unwrap().clone())
+    }
+    pub fn list_all_endpoints(&self) -> Vec<String> {
+        let mut endpoints = Vec::new();
+        let mut stmt = self.db_conn.prepare("SELECT * FROM foxes;").unwrap();
+        let endpoint_iter = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0).unwrap(),
+                    row.get::<_, String>(1).unwrap(),
+                ))
+            })
+            .unwrap();
+        for endpoint in endpoint_iter {
+            let (dataset, ip_addr) = endpoint.unwrap();
+            endpoints.push(dataset + " " + ip_addr.as_str());
+        }
+        endpoints
+    }
 }
 
 async fn health_check() -> &'static str {
@@ -109,10 +146,20 @@ async fn add_loc_to_ds(
     "Location added\n"
 }
 
+async fn list_all_endpoints(State(catalog): State<Arc<Mutex<Catalog>>>) -> String {
+    let endpoints = catalog.lock().unwrap().list_all_endpoints();
+    let mut res = String::new();
+    for endpoint in endpoints {
+        res.push_str(endpoint.as_str());
+        res.push('\n');
+    }
+    res
+}
+
 #[cfg(test)]
 mod catalog_tests {
-    use arrow_ipc::writer::StreamWriter;
     use super::*;
+    use arrow_ipc::writer::StreamWriter;
 
     #[test]
     fn init_dataset() {

@@ -20,6 +20,13 @@ tokio = "1.40.0"
 tonic = "0.11.0"
 prost = "0.13.2"
 bytes = "1.7.2"
+tonic-health = "0.11.0"
+embed_anything = { git="https://github.com/StarlightSearch/EmbedAnything.git" }
+parquet = "53.2.0"
+
+[patch.crates-io]
+lax = { git="https://github.com/rust-ndarray/ndarray-linalg.git", rev="refs/pull/354/head" }
+
 
 [build-dependencies]
 prost-build = "0.13.2"

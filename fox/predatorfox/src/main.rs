@@ -18,14 +18,11 @@
 
 mod predatorfox;
 mod flight;
-use env_logger;
-use log::info;
-use std::sync::Arc;
+use std::net::SocketAddr;
 
-use arrow_array::types::Float32Type;
-use arrow_array::{FixedSizeListArray, Int32Array, RecordBatch, RecordBatchIterator};
-use arrow_schema::{DataType, Field, Schema};
-use futures::TryStreamExt;
+use log::info;
+use std::env;
+
 use tonic::transport::Server;
 use arrow_flight::flight_service_server::FlightServiceServer;
 
@@ -33,13 +30,15 @@ use arrow_flight::flight_service_server::FlightServiceServer;
 #[tokio::main]
 async fn main() -> Result<(), ()> {
     env_logger::init();
-    let service = flight::FlightServiceImpl::new().await.unwrap();
+    let (health_reporter, health_service) = tonic_health::server::health_reporter();
+    let location = format!("{}:50051", env::var("HOST_IP_ADDR").unwrap_or("0.0.0.0".to_string()));
+    let addr: SocketAddr = location.parse().unwrap();
+    let service = flight::FlightServiceImpl::new(location, "./data/dataset_db".to_string(), health_reporter.clone()).await.unwrap();
     service.setup_predator().await;
-    let addr = "[::1]:50051".parse().unwrap();
-
+    
     let svc = FlightServiceServer::new(service);
     info!("Starting server on {}", addr);
-    Server::builder().add_service(svc).serve(addr).await.unwrap();
+    Server::builder().add_service(health_service).add_service(svc).serve(addr).await.unwrap();
 
     Ok(())
 }

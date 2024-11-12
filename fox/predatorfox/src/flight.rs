@@ -16,33 +16,46 @@
 // under the License.
 
 use crate::predatorfox;
+use std::collections::HashMap;
+use std::sync::RwLock;
+use std::pin::Pin;
 
+use arrow_array::RecordBatch;
 use arrow_flight::FlightEndpoint;
+use arrow_flight::utils::batches_to_flight_data;
 use arrow_schema::{Schema, Field, DataType};
 use futures::stream::BoxStream;
+use futures::{Stream, stream};
 use log::info;
 use prost::Message;
 use lancedb::error::Error;
 use tonic::{Request, Response, Status, Streaming};
+use tonic_health::server::HealthReporter;
+use arrow_flight::flight_service_server::FlightServiceServer;
 
 use arrow_flight::flight_descriptor::DescriptorType;
 use arrow_flight::{
-    flight_service_server::FlightService, flight_service_server::FlightServiceServer, Action,
+    flight_service_server::FlightService, Action,
     ActionType, Criteria, Empty, FlightData, FlightDescriptor, FlightInfo, HandshakeRequest,
     HandshakeResponse, Location, PollInfo, PutResult, SchemaResult, Ticket,
 };
 
 use std::convert::TryFrom;
-#[derive(Clone)]
 pub struct FlightServiceImpl {
     predator: predatorfox::Predator,
+    location: String,
+    ticket_store: RwLock<HashMap<String, Vec<RecordBatch>>>,
 }
 
 impl FlightServiceImpl {
-    pub async fn new() -> Result<Self, ()> {
-        Ok(Self {
-            predator: predatorfox::Predator::new().await.unwrap(),
-        })
+    pub async fn new(location: String, db_uri: String, mut health_reporter: HealthReporter) -> Result<Self, ()> {
+        let svc = Ok(Self {
+            predator: predatorfox::Predator::new(db_uri).await.unwrap(),
+            location,
+            ticket_store: RwLock::new(HashMap::<String, Vec<RecordBatch>>::new()),
+        });
+        health_reporter.set_serving::<FlightServiceServer<FlightServiceImpl>>().await;
+        svc
     }
 
     pub async fn setup_predator(&self) {
@@ -95,16 +108,16 @@ impl FlightService for FlightServiceImpl {
         let descriptor = _request.into_inner();
         match DescriptorType::try_from(descriptor.r#type) {
             Ok(DescriptorType::Cmd) => {
-                info!("Received command descriptor");
                 let cmd = predatorfox::cmd::Command::decode(descriptor.cmd).unwrap();
                 match predatorfox::cmd::CommandType::try_from(cmd.cmd_type) {
                     Ok(predatorfox::cmd::CommandType::Query) => {
                         info!("Received query command");
+                        let stream = self.predator.execute_query(&cmd.query).await.expect("query failed");
                         let flight_info = FlightInfo::new()
                             .try_with_schema(
-                                &self.predator.get_schema(&cmd.query.dataset).await.expect("schema failed"),
+                                &stream[0].schema().clone()
                             )
-                            .expect("encoding failed")
+                            .expect("schema failed")
                             .with_descriptor(FlightDescriptor {
                                 r#type: DescriptorType::Cmd as i32,
                                 cmd: Vec::<u8>::new().into(),
@@ -112,16 +125,20 @@ impl FlightService for FlightServiceImpl {
                             })
                             .with_endpoint(FlightEndpoint {
                                 ticket: Some(Ticket {
-                                    ticket: Vec::<u8>::new().into(),
+                                    ticket: cmd.query.uuid.clone().unwrap().into(),
                                 }),
                                 location: vec![Location {
-                                    uri: "localhost:50051".to_string(),
+                                    uri: format!("grpc://{}", self.location.clone()),
                                 }],
                                 ..Default::default()
                             })
                             // .with_total_bytes(0)
                             // .with_total_records(0)
                             .with_ordered(false);
+                        {
+                            let mut write_guard = self.ticket_store.write().unwrap();
+                            write_guard.insert(cmd.query.uuid.unwrap(), stream);
+                        }
                         return Ok(Response::new(flight_info));
                     }
                     Ok(predatorfox::cmd::CommandType::Unknown) => {
@@ -146,7 +163,55 @@ impl FlightService for FlightServiceImpl {
         &self,
         _request: Request<FlightDescriptor>,
     ) -> Result<Response<PollInfo>, Status> {
-        Err(Status::unimplemented("Implement poll_flight_info"))
+        let descriptor = _request.into_inner();
+        match DescriptorType::try_from(descriptor.r#type) {
+            Ok(DescriptorType::Cmd) => {
+                info!("Received command descriptor");
+                let cmd = predatorfox::cmd::Command::decode(descriptor.cmd).unwrap();
+                match predatorfox::cmd::CommandType::try_from(cmd.cmd_type) {
+                    Ok(predatorfox::cmd::CommandType::Query) => {
+                        info!("Received query command");
+                        let stream = self.predator.execute_query(&cmd.query).await.expect("query failed");
+                        let flight_info = FlightInfo::new()
+                            .try_with_schema(
+                                &stream[0].schema().clone()
+                            )
+                            .expect("encoding failed")
+                            .with_descriptor(FlightDescriptor {
+                                r#type: DescriptorType::Cmd as i32,
+                                cmd: Vec::<u8>::new().into(),
+                                path: vec!["".to_string()],
+                            })
+                            .with_endpoint(FlightEndpoint {
+                                ticket: Some(Ticket {
+                                    ticket: cmd.query.uuid.unwrap().into(),
+                                }),
+                                location: vec![Location {
+                                    uri: format!("grpc://{}", self.location.clone()),
+                                }],
+                                ..Default::default()
+                            })
+                            // .with_total_bytes(0)
+                            // .with_total_records(0)
+                            .with_ordered(false);
+                        return Ok(Response::new(PollInfo::new().with_info(flight_info)));
+                    }
+                    Ok(predatorfox::cmd::CommandType::Unknown) => {
+                        return Err(Status::unimplemented("unknown predatorfox command"))
+                    }
+                    Err(_) => return Err(Status::unimplemented("unknown predatorfox command")),
+                }
+            }
+            Ok(DescriptorType::Path) => {
+                return Err(Status::unimplemented(
+                    "path is not supported, use command type descriptor",
+                ))
+            }
+            Ok(DescriptorType::Unknown) => {
+                return Err(Status::unimplemented("use command type descriptor"))
+            }
+            Err(_) => return Err(Status::unimplemented("Implement get_flight_info")),
+        }
     }
 
     async fn get_schema(
@@ -160,7 +225,20 @@ impl FlightService for FlightServiceImpl {
         &self,
         _request: Request<Ticket>,
     ) -> Result<Response<Self::DoGetStream>, Status> {
-        Err(Status::unimplemented("Implement do_get"))
+        let ticket = _request.into_inner();
+        let read_guard = self.ticket_store.read().unwrap();
+        let batches = read_guard.get(&String::from_utf8(ticket.ticket.to_vec()).unwrap()).unwrap().clone();
+        let first_batch = batches[0].clone();
+        let schema = first_batch.schema_ref();
+        let flight_data = batches_to_flight_data(schema, batches)
+            .map_err(|_e| Status::new(400.into(), "cannot convert record batches"))?
+            .into_iter()
+            .map(Ok);
+
+        let stream: Pin<Box<dyn Stream<Item = Result<FlightData, Status>> + Send>> =
+            Box::pin(stream::iter(flight_data));
+        let resp = Response::new(stream);
+        Ok(resp)
     }
 
     async fn do_put(
