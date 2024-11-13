@@ -4,10 +4,11 @@ import open_clip
 import io
 import numpy as np
 import torch
+import os
 
 class ClipAnnotator(CollectorfoxAnnotator):
     def __init__(self):
-        model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
+        model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k', cache_dir=os.getenv("CACHE_DIR"))
         model.eval()  # model in train mode by default, impacts some models with BatchNorm or stochastic depth active
         self.model = model
         self.preprocess = preprocess

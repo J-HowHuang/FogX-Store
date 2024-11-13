@@ -18,11 +18,11 @@ services:
       test: ["CMD-SHELL", "/grpc_health_probe-linux-amd64 -addr=$$HOST_IP_ADDR:50051"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 30
       start_period: 60s
     volumes:
       - db-data-1:/app/data
-      - pq-data-1:/app/data/parquets
+      - cache-1:/root/.cache
     ports:
       - "50051:50051"
       - "50635:11635"
@@ -32,34 +32,34 @@ services:
     environment:
       - HOST_IP_ADDR=172.26.0.2
       - RUST_LOG=info
-      - model_cache:/root/.cache/huggingface/
   collectorfox_1:
     build: ./fox/collectorfox
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://$$HOST_IP_ADDR:11635/health"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 30
       start_period: 10s
     volumes:
       - db-data-1:/app/data
-      - pq-data-1:/app/data/parquets
+      - cache-1:/app/data/cache
     network_mode: "service:predatorfox_1"
     environment:
       - HOST_IP_ADDR=172.26.0.2
       - SKULK_IP_ADDR=172.26.0.4
       - PARQUET_PATH=/app/data/parquets
+      - CACHE_DIR=/app/data/cache
   predatorfox_2:
     build: ./fox/predatorfox
     healthcheck:
       test: ["CMD-SHELL", "/grpc_health_probe-linux-amd64 -addr=$$HOST_IP_ADDR:50051"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 30
       start_period: 60s
     volumes:
       - db-data-2:/app/data
-      - pq-data-2:/app/data/parquets
+      - cache-2:/root/.cache
     ports:
       - "51051:50051"
       - "51635:11635"
@@ -69,23 +69,23 @@ services:
     environment:
       - HOST_IP_ADDR=172.26.0.3
       - RUST_LOG=info
-      - model_cache:/root/.cache/huggingface/
   collectorfox_2:
     build: ./fox/collectorfox
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://$$HOST_IP_ADDR:11635/health"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 30
       start_period: 10s
     volumes:
       - db-data-2:/app/data
-      - pq-data-2:/app/data/parquets
+      - cache-2:/app/data/cache
     network_mode: "service:predatorfox_2"
     environment:
       - HOST_IP_ADDR=172.26.0.3
       - SKULK_IP_ADDR=172.26.0.4
       - PARQUET_PATH=/app/data/parquets
+      - CACHE_DIR=/app/data/cache
   test_client_script:
     build: ./tests
     environment:
@@ -127,10 +127,9 @@ services:
 volumes:
   db-data-1:
   db-data-2:
-  pq-data-1:
-  pq-data-2:
   skulk-data:
-  model_cache:
+  cache-1:
+  cache-2:
 
 
 networks:

@@ -19,7 +19,9 @@ if __name__ == "__main__":
         pa.field("observation", pa.binary())
     ],metadata={
             "language_instruction_model" : "sentence-transformers/all-MiniLM-L6-v2",
-            "language_instruction_column" : "language_embedding"
+            "language_instruction_column" : "language_embedding",
+            "observation_model" : "openai/clip-vit-base-patch32",
+            "observation_column" : "clip_embedding"
             })
 
     serialized_schema = schema.serialize().to_pybytes()
@@ -59,11 +61,15 @@ if __name__ == "__main__":
     schema = pa.schema([
         pa.field("file_path", pa.string()),
         pa.field("language_embedding", pa.list_(pa.float32(), 384)),
-        pa.field("language_instruction", pa.string())
+        pa.field("language_instruction", pa.string()),
+        pa.field("clip_embedding", pa.list_(pa.float32(), 512)),
+        pa.field("observation", pa.binary())
         ],
         metadata={
             "language_instruction_model" : "sentence-transformers/all-MiniLM-L6-v2",
             "language_instruction_column" : "language_embedding",
+            "observation_model" : "openai/clip-vit-base-patch32",
+            "observation_column" : "clip_embedding"
         })
 
     serialized_schema = schema.serialize().to_pybytes()

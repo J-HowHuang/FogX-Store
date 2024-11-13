@@ -45,3 +45,17 @@ if __name__ == "__main__":
     ))
     
     print(table)
+    
+    
+    table = client.get_dataset(SkulkQuery(
+        dataset="cmu_stretch",
+        columns=["language_instruction"],
+        vector_query=VectorQuery(
+            column="observation",
+            text_query="dish washer",
+            top_k=3
+        ),
+        with_step_data=False
+    ))
+    
+    print(table)
