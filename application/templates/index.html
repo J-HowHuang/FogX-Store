@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+            flex-direction: column;
+        }
+        .container {
+            text-align: center;
+        }
+        input, select, button {
+            padding: 10px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Search Page</h1>
+        <textarea id="queryInput" placeholder="Please Input Search Query" rows="4" cols="50"></textarea><br>
+        
+        <label for="modelSelect">Select Model:</label>
+        <select id="modelSelect">
+            <option value="N/A">N/A</option>
+            <option value="phi">Phi Model</option>
+            <option value="qwen">Qwen Model</option>
+        </select><br>
+        
+        <button onclick="submitQuery()">Submit</button>
+        
+        <p id="selection"></p>
+        <p id="queries"></p>
+        <p id="result"></p>
+    </div>
+
+    <script>
+        function submitQuery() {
+            const query = document.getElementById('queryInput').value;
+            const model = document.getElementById('modelSelect').value;
+
+            // Displays the selected model and query content
+            document.getElementById('selection').innerText = `Your Model Selection: ${model}`;
+            document.getElementById('queries').innerText = `Your Input Queries: ${query}`;
+
+            // If N/A is selected, the request is not sent and is returned directly
+            if (model === "N/A") {
+                document.getElementById('result').innerText = "Result: Please select a valid model";
+                return;
+            }
+
+            fetch('/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: query, model: model })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerText = `Result: ${data.result}`;
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
