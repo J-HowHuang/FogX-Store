@@ -21,21 +21,6 @@ def unpack_tensor(tensor):
         tensor = tensor.numpy()  # Assuming it's a TensorFlow or PyTorch tensor
     return tensor
 
-def get_step_data_content(step_data, column):
-    # get the value of the column from the step data
-    value = step_data.get(column, None)
-    if value is None:
-        return None
-    if column == "observation":
-        image_tensor = value.get("image")
-        image_np = unpack_tensor(image_tensor)
-        image = Image.fromarray(image_np)
-        buf = io.BytesIO()
-        image.save(buf, format='PNG')
-        return buf.getvalue()
-    
-    return unpack_tensor(value)
-
 def image_to_bytes(image: Image.Image, format="PNG"):
     # Convert image to bytes
     buffer = io.BytesIO()
