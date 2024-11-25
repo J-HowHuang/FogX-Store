@@ -15,6 +15,7 @@ GCS_TOP_K = 5
 PARQUET_PATH = os.getenv('PARQUET_PATH', './../../_datasets/parquet')  # Default to 'localhost' if not set
 SKULK_IP_ADDR = os.getenv('SKULK_IP_ADDR') # get the skulk ip address from the environment variable
 HOST_IP_ADDR = os.getenv("HOST_IP_ADDR", "0.0.0.0")
+ADVERTISE_IP_ADDR = os.getenv("ADVERTISE_IP_ADDR")
 lance_path = "./data/dataset_db"
 
 logger = logging.getLogger(__name__)
@@ -64,4 +65,4 @@ class CollectorFox:
             
         self.datasets[name] = dataset
             
-collectorfox = CollectorFox(lance_path, PARQUET_PATH, SKULK_IP_ADDR, HOST_IP_ADDR)
+collectorfox = CollectorFox(lance_path, PARQUET_PATH, SKULK_IP_ADDR, ADVERTISE_IP_ADDR)
