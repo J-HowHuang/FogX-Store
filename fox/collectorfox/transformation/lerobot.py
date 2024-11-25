@@ -14,6 +14,8 @@ import torch
 
 GCS_TOP_K=5
 
+img_in_steps = set()
+
 def unpack_tensor(tensor):
     if tensor.dtype == tf.string:
         return tensor.numpy().decode('utf-8')
@@ -35,15 +37,18 @@ def group_lerobot_steps_with_episodes(dataset):
     for target_index in episode_indexes:
         mask = dataset['episode_index'] == target_index
         for key in dataset.keys():
+            print(key, type(dataset[key][0]))
             if isinstance(dataset[key], torch.Tensor) or isinstance(dataset[key], tf.Tensor):
                 grouped_data[key] = dataset[key][mask].numpy()
                 if len(grouped_data[key].shape) == 2:
                     grouped_data[key] = [row for row in grouped_data[key]]
             else:
-                if key == 'observation.images.image':
-                    grouped_data['observation'] = [image_to_bytes(v) for v, m in zip(dataset[key], mask) if m]
+                if all([type(v) == Image.Image for v in dataset[key]]):
+                    img_in_steps.add(key)
+                    grouped_data[key] = [image_to_bytes(v) for v, m in zip(dataset[key], mask) if m]
                 else:
                     grouped_data[key] = [v for v, m in zip(dataset[key], mask) if m]
+                            
         dataset_by_episode.append(grouped_data)
     return dataset_by_episode
     
@@ -55,11 +60,8 @@ class LeRobotPipeline(CollectorfoxTransformation):
         self.sample_method = step_data_sample_method
     
     def get_iterator(self, src_path: str, dataset_name: str = None):
-        assert(src_path.startswith('gs://'))
+        assert(src_path.startswith('gs://')) # only support GCS for now
         print("Loading dataset from {}".format(src_path))
-        b = tfds.builder_from_directory(builder_dir=src_path)
-        self.ds = b.as_dataset(split='train[:{}]'.format(GCS_TOP_K))
-        self.episode_iter = iter(self.ds)
         
         if dataset_name is None: # dangerous
             dataset_name = src_path.split('/')[-2]
@@ -68,7 +70,7 @@ class LeRobotPipeline(CollectorfoxTransformation):
         self.lerobot_steps_dict = load_from_raw(
             raw_dir=src_path,
             videos_dir=videos_dir,
-            fps=3,   
+            fps=3, 
             video=False,
             openx_dataset_name=dataset_name,
             split='train',
@@ -78,9 +80,8 @@ class LeRobotPipeline(CollectorfoxTransformation):
         return self.__iter__()
     
     def __next__(self):
-        episode = next(self.episode_iter)
         steps = next(self.grouped_steps_iter)
-
+        
         episode_table = {}
         
         sample_step_idx = -1
@@ -92,15 +93,23 @@ class LeRobotPipeline(CollectorfoxTransformation):
             sample_step_idx = len(steps)
         elif self.sample_method == 'mid':
             sample_step_idx = len(steps) // 2
-            
+
+        observation_col_set = set(steps.keys()).intersection(img_in_steps)
+        # take the first image column as observation
+        observation_col = observation_col_set.pop() if len(observation_col_set) > 0 else ""
+        if observation_col == "":
+            episode_table['observation'] = [""]
+        else:
+            value = steps[observation_col][sample_step_idx]
+            episode_table['observation'] = [value]
+       
         
-        for key, value in episode['episode_metadata'].items():
-            value = unpack_tensor(value)
-            episode_table[key] = [value]
         
-        for col in self.sample_col:
-            value = steps[col][sample_step_idx]
-            episode_table[col] = [value]
+        if 'language_instruction' not in steps:
+            episode_table['language_instruction'] = [""]
+        else:
+            value = steps['language_instruction'][sample_step_idx]
+            episode_table['language_instruction'] = [value]
         
         return episode_table, pa.table(steps)
     
