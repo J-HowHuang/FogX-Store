@@ -12,5 +12,5 @@ class CollectorfoxAnnotator(ABC):
         return type(None)
     
     @abstractmethod
-    def get_input_type(cls):
-        return type(None)
+    def get_annotator_name(cls):
+        return ""

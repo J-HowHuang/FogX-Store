@@ -5,6 +5,7 @@ import io
 import numpy as np
 import torch
 import os
+import pyarrow as pa
 
 class ClipAnnotator(CollectorfoxAnnotator):
     def __init__(self):
@@ -19,8 +20,8 @@ class ClipAnnotator(CollectorfoxAnnotator):
         print(res.shape)
         return res.tolist()
     
-    def get_input_type(cls):
-        return str
+    def get_annotator_name(cls):
+        return "openai/clip-vit-base-patch32"
     
     def get_output_type(cls):
-        return
+        return pa.list_(pa.float32(), 512)

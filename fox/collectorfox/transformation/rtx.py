@@ -76,5 +76,3 @@ class RTXPipeline(CollectorfoxTransformation):
                 value = get_step_data_content(step, key)
                 step_data[key].append(value)
         return episode_table, pa.table(step_data)
-    
-            

@@ -1,6 +1,6 @@
 from .base_annotator import CollectorfoxAnnotator
 from fastembed import TextEmbedding
-import numpy as np
+import pyarrow as pa
 import os
 
 class TextAnnotator(CollectorfoxAnnotator):
@@ -10,9 +10,9 @@ class TextAnnotator(CollectorfoxAnnotator):
     def annotate(self, input_data):
         return list(self.embedder.embed(input_data))
     
-    def get_input_type(cls):
-        return str
+    def get_annotator_name(cls):
+        return "sentence-transformers/all-MiniLM-L6-v2"
     
     def get_output_type(cls):
-        return np.ndarray
+        return pa.list_(pa.float32(), 384)
     
