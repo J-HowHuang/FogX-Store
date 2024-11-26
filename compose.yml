@@ -31,6 +31,7 @@ services:
         ipv4_address: "172.26.0.2"
     environment:
       - HOST_IP_ADDR=172.26.0.2
+      - ADVERTISE_IP_ADDR=172.26.0.2
       - RUST_LOG=info
   collectorfox_1:
     build: ./fox/collectorfox
@@ -46,6 +47,7 @@ services:
     network_mode: "service:predatorfox_1"
     environment:
       - HOST_IP_ADDR=172.26.0.2
+      - ADVERTISE_IP_ADDR=172.26.0.2
       - SKULK_IP_ADDR=172.26.0.4
       - PARQUET_PATH=/app/data/parquets
       - CACHE_DIR=/app/data/cache
@@ -67,6 +69,7 @@ services:
       skulk-net:
         ipv4_address: "172.26.0.3"
     environment:
+      - ADVERTISE_IP_ADDR=172.26.0.3
       - HOST_IP_ADDR=172.26.0.3
       - RUST_LOG=info
   collectorfox_2:
@@ -83,6 +86,7 @@ services:
     network_mode: "service:predatorfox_2"
     environment:
       - HOST_IP_ADDR=172.26.0.3
+      - ADVERTISE_IP_ADDR=172.26.0.3
       - SKULK_IP_ADDR=172.26.0.4
       - PARQUET_PATH=/app/data/parquets
       - CACHE_DIR=/app/data/cache
