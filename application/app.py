@@ -45,36 +45,39 @@ def process():
 
 @app.route('/display', methods=['GET', 'POST'])
 def display_data():
-    global processed_data
+    global processed_data, mode  # 使用全局变量 processed_data 和 mode
 
     if 'processed_data' not in globals():
         return "No data to display."
 
-    # get unique episode id
+    # 获取所有唯一的 episode_id
     episode_ids = processed_data['_episode_id'].unique()
-    # defaultly show first episode data 
+    # 默认选择第一个 episode_id
     selected_episode_id = request.form.get('episode_id', episode_ids[0])  
 
-    # filter episode
+    # 筛选当前选择的 Episode 数据
     episode_data = processed_data[processed_data['_episode_id'] == selected_episode_id].copy()
 
-    if mode == "with-step":
-        # remove language_embedding column (make visualization clear and beautiful)
+    # 如果是 with-step 数据
+    is_with_step = mode == "with-step"
+    if is_with_step:
+        # 移除 language_embedding 列（用于可视化）
         if 'language_embedding' in episode_data.columns:
             episode_data = episode_data.drop(columns=['language_embedding'])
 
-        # convert ‘observation’ tensor to Base64，store in new column
+        # 将 observation 转换为 Base64 并存储到新的列中
         episode_data['observation_image'] = episode_data['observation'].apply(
             lambda obs: f"data:image/png;base64,{base64.b64encode(obs).decode('utf-8')}"
         )
+        # 删除原始的 observation 列（不需要展示原始数据）
+        episode_data = episode_data.drop(columns=['observation'])
 
-    # convert to dictionary data
+    # 将表格数据转换为字典格式
     table_data = episode_data.to_dict(orient='records')  
-    # get column names (for without step data)
-    columns = episode_data.columns.tolist() 
-    # check with or without step data
-    is_with_step = True if mode == "with-step" else False 
+    # 获取表头信息
+    columns = episode_data.columns.tolist()
 
+    # 渲染模板并传递必要的信息
     return render_template(
         'display.html',
         episode_ids=episode_ids,

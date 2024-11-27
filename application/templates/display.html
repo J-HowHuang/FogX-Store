@@ -46,37 +46,21 @@
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        {% if is_with_step %}
-                            <th>Language Instruction</th>
-                            <th>Episode ID</th>
-                            <th>Distance</th>
-                            <th>Action</th>
-                            <th>Reward</th>
-                            <th>Step ID</th>
-                            <th>Observation</th>
-                        {% else %}
-                            {% for column in columns %}
-                                <th>{{ column }}</th>
-                            {% endfor %}
-                        {% endif %}
+                        {% for column in columns %}
+                            <th>{{ column }}</th>
+                        {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for row in table_data %}
                     <tr>
-                        {% if is_with_step %}
-                            <td>{{ row['language_instruction_x'] }}</td>
-                            <td>{{ row['_episode_id'] }}</td>
-                            <td>{{ row['_distance'] }}</td>
-                            <td>{{ row['action'] }}</td>
-                            <td>{{ row['reward'] }}</td>
-                            <td>{{ row['_step_id'] }}</td>
-                            <td><img src="{{ row['observation_image'] }}" alt="Observation Image"></td>
-                        {% else %}
-                            {% for column in columns %}
+                        {% for column in columns %}
+                            {% if is_with_step and column == 'observation_image' %}
+                                <td><img src="{{ row[column] }}" alt="Observation Image"></td>
+                            {% else %}
                                 <td>{{ row[column] }}</td>
-                            {% endfor %}
-                        {% endif %}
+                            {% endif %}
+                        {% endfor %}
                     </tr>
                     {% endfor %}
                 </tbody>
