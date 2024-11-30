@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Input</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Welcome to FogX</h1>
+        <form action="/process" method="post">
+            <!-- Required Fields -->
+            <div class="mb-3">
+                <label for="dataset" class="form-label">Dataset (Required)</label>
+                <input type="text" class="form-control" id="dataset" name="dataset" required>
+            </div>
+
+            <!-- Optional Fields -->
+            <div class="mb-3">
+                <label for="columns" class="form-label">Columns (Optional, comma-separated)</label>
+                <textarea class="form-control" id="columns" name="columns" rows="2" placeholder="e.g., column1,column2"></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="predicates" class="form-label">Predicates (Optional)</label>
+                <input type="text" class="form-control" id="predicates" name="predicates" placeholder="e.g., column=value">
+            </div>
+
+            <div class="mb-3">
+                <label for="limit" class="form-label">Limit (Optional)</label>
+                <input type="number" class="form-control" id="limit" name="limit" placeholder="e.g., 10">
+            </div>
+
+            <div class="mb-3">
+                <label for="uuid" class="form-label">UUID (Optional)</label>
+                <input type="text" class="form-control" id="uuid" name="uuid" placeholder="e.g., unique-identifier">
+            </div>
+
+            <!-- Vector Query (Nested Input) -->
+            <h5 class="mt-4">Vector Query (Optional)</h5>
+            <div class="mb-3">
+                <label for="vector_query_column" class="form-label">Vector Query Column</label>
+                <input type="text" class="form-control" id="vector_query_column" name="vector_query_column" placeholder="e.g., language_instruction">
+            </div>
+            <div class="mb-3">
+                <label for="vector_query_text" class="form-label">Vector Query Text</label>
+                <input type="text" class="form-control" id="vector_query_text" name="vector_query_text" placeholder="e.g., dish washer">
+            </div>
+            <div class="mb-3">
+                <label for="vector_query_top_k" class="form-label">Vector Query Top K</label>
+                <input type="number" class="form-control" id="vector_query_top_k" name="vector_query_top_k" placeholder="e.g., 3">
+            </div>
+
+            <!-- With Step Data (Boolean) -->
+            <div class="mb-3">
+                <label for="with_step_data" class="form-label">With Step Data</label>
+                <select class="form-control" id="with_step_data" name="with_step_data">
+                    <option value="true">True</option>
+                    <option value="false">False</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+</body>
+</html>
