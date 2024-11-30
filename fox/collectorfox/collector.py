@@ -1,168 +1,68 @@
-from flask import Flask, jsonify, request
-import tensorflow as tf
+from flask import Flask
+from typing import Type, Dict, Tuple, List
+from dataset import FoxDatasetDefinition
 import pyarrow as pa
-import numpy as np
-from collections import defaultdict
-import tensorflow_datasets as tfds
 import lancedb
 import os
-import requests
-import base64
+import sys
+import logging
 import uuid
-import pyarrow.parquet as pq
-from lancedb.embeddings import get_registry
-from lancedb.pydantic import LanceModel, Vector
-from fastembed import TextEmbedding
+import requests
 
 # The number of episodes to read from the GCS dataset (For testing only)
 GCS_TOP_K = 5
 # Get environment variables
 PARQUET_PATH = os.getenv('PARQUET_PATH', './../../_datasets/parquet')  # Default to 'localhost' if not set
-SKLK_IP_ADDR = os.environ.get('SKULK_IP_ADDR') # get the skulk ip address from the environment variable
-# col to model mapping
-COL_TO_MODEL = {
-    # example: "language_instruction": "nomic-ai/nomic-embed-text-v1.5"
-}
+SKULK_IP_ADDR = os.getenv('SKULK_IP_ADDR') # get the skulk ip address from the environment variable
+HOST_IP_ADDR = os.getenv("HOST_IP_ADDR", "0.0.0.0")
+ADVERTISE_IP_ADDR = os.getenv("ADVERTISE_IP_ADDR")
+lance_path = "./data/dataset_db"
 
-app = Flask(__name__)
+logger = logging.getLogger(__name__)
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-def tensor_to_bytes(tensor):
-    """
-    Convert a tensor to bytes. Assumes the tensor is a NumPy array.
-    """
-    # Convert tensor to NumPy array if it's not already
-    if not isinstance(tensor, np.ndarray):
-        tensor = tensor.numpy()  # Assuming it's a TensorFlow or PyTorch tensor
-    return tensor.tobytes()
+class CollectorFox:
+    def __init__(self, lance_path, step_data_dir, skulk_ip_addr, my_ip_addr):
+        self.flask_app = Flask(__name__)
+        self.lance_path = lance_path
+        self.step_data_dir = step_data_dir
+        self.skulk_ip_addr = skulk_ip_addr
+        self.my_ip_addr = my_ip_addr
+        self.datasets: Dict[str, FoxDatasetDefinition] = {}
+        
+    def run(self):
+        logger.info("Starting CollectorFox...")
+        self.flask_app.run(host=os.environ.get("HOST_IP_ADDR", "0.0.0.0"), port=11635)
 
-# Use uuid for episode index
-def get_episode_index_for_dataset(dataset_name):
-    return uuid.uuid4().hex
-
-# # add a new dataset with post "" request
-def add_new_dataset_catalog(dataset: str, schema: pa.Schema):
-    serialized_schema = schema.serialize().to_pybytes()
-    url = f"http://{SKLK_IP_ADDR}:11632/dataset/" + dataset
-    response = requests.post(url, data=serialized_schema)
-    if response.status_code != 200:
-        raise Exception("Failed to add dataset to the dataset catalog")
-
-# add a new location to the dataset catalog with post "" request
-def add_new_location_to_dataset(dataset: str):
-    url = f"http://{SKLK_IP_ADDR}:11632/dataset/" + dataset + "/add"
-    response = requests.post(url, data=os.environ.get("HOST_IP_ADDR", "0.0.0.0"))
-    if response.status_code != 200:
-        raise Exception("Failed to add location to the dataset catalog")
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({"message": "Collector is running"}), 200
-
-# create a new dataset table with the given schema
-@app.route('/create', methods=['POST'])
-def create_table():
-    try:
-        uri = request.json.get('uri') # get the uri from the request
-        dataset = request.json.get('dataset') # get the dataset name from the request
-        encoded_schema = request.json.get('schema') # get the schema from the request
+    def route(self):
+        return self.flask_app.route
+    
+    def register_dataset(self, dataset: FoxDatasetDefinition):
+        name = dataset.name
+        schema = dataset.schema
         
         # create directory for storing parquet files
-        os.makedirs(f"{PARQUET_PATH}/{dataset}", exist_ok=True)
-        # deserialize the schema
-        decoded_schema = base64.b64decode(encoded_schema)
-        # Deserialize the schema using pyarrow
-        schema = pa.ipc.read_schema(pa.BufferReader(decoded_schema))
-        schema = schema.append(pa.field("_episode_path", pa.string()))
-        schema = schema.append(pa.field("_episode_id", pa.string()))
-        # connect to the lancedb with the given uri
-        db = lancedb.connect(uri)
-        # create col to model mapping
-        for col, model_name in schema.metadata.items():
-            if col.decode('utf-8').endswith("_model"):
-                COL_TO_MODEL[col.decode('utf-8')[:-6]] = TextEmbedding(model_name=model_name.decode('utf-8'))
+        os.makedirs(f"{collectorfox.step_data_dir}/{name}", exist_ok=True)
+        
         # create a new table with the given schema
-        db.create_table(dataset, schema=schema)
-        add_new_dataset_catalog(dataset, schema) # add the dataset to the dataset catalog
-        add_new_location_to_dataset(dataset) # add the location to the dataset catalog
-        return jsonify({"message": "Database created successfully"}), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-@app.route('/write', methods=['POST'])
-def add_data_to_lancedb(): 
-    try:
-        uri = request.json.get('uri')
-        dataset = request.json.get('dataset')
-        ds_path = request.json.get('ds_path') 
+        db = lancedb.connect(collectorfox.lance_path)
+        db.create_table(name, schema=schema, exist_ok=True)
+        logger.info(f"Dataset '{name}' registered. Schema:\n{schema}")
         
-        # Connect to LanceDB with the given URI
-        db = lancedb.connect(uri)
-        tbl = db.open_table(dataset)
-
-        if ds_path.startswith('gs://'):  # If the dataset is stored in GCS
-            print("Reading dataset from GCS")
-            b = tfds.builder_from_directory(builder_dir=ds_path)
-            ds = b.as_dataset(split='train[:{}]'.format(GCS_TOP_K))
-        else:  # If the dataset is stored locally
-            print("Reading dataset from local")
-            ds = tf.data.Dataset.load(ds_path)
-        
-        print("Writing dataset to LanceDB")
-        for episode in ds:
-            episode_index = get_episode_index_for_dataset(dataset)
-            episode_parquet_path = f"{PARQUET_PATH}/{dataset}/{episode_index}/steps.parquet"
-            step_data = defaultdict(list)
-
-            episode_table = {}
-            episode_table["_episode_id"] = [episode_index]
-            for key, value in episode['episode_metadata'].items():
-                value = value.numpy()
-                if isinstance(value, bytes):
-                    value = str(value)
-                episode_table[key] = [value]
-            for i, step in enumerate(episode['steps']):
-                for key, value in step.items():
-                    if key == "observation":
-                        image_tensor = value.get("image")
-                        image_bytes = tensor_to_bytes(image_tensor)
-                        step_data["image"].append(image_bytes)
-                    else:
-                        value = value.numpy()
-                        if isinstance(value, bytes):
-                            value = str(value)
-                        step_data[key].append(value)
-                step_data["_episode_id"].append(episode_index)
-                step_data["_step_id"].append(i)
-
-            arrow_table = pa.table(step_data)
-            os.makedirs(os.path.dirname(episode_parquet_path), exist_ok=True)
-            pq.write_table(arrow_table, episode_parquet_path)
-            print(f"Saved episode steps to {episode_parquet_path}")
+        serialized_schema = schema.serialize().to_pybytes()
+        # add the dataset to the skulk catalog
+        url = f"http://{self.skulk_ip_addr}:11632/dataset/{name}"
+        response = requests.post(url, data=serialized_schema)
+        if response.status_code != 200:
+            logger.error(f"Failed to create dataset '{name}' in Skulk")
+        logger.info(f"response from skulk: {response.text}")
+        # add the location to the skulk catalog
+        url = f"http://{self.skulk_ip_addr}:11632/dataset/{name}/add"
+        response = requests.post(url, data=self.my_ip_addr)
+        if response.status_code != 200:
+            logger.error(f"Failed to add this predator '{self.my_ip_addr}' to dataset '{name}' to Skulk")
+        logger.info(f"response from skulk: {response.text}")
             
-            first_step = next(iter(episode['steps']))
-            instruction = first_step.get("language_instruction", None)
-            if instruction is not None:
-                instruction_text = instruction.numpy().decode('utf-8')
-                
-                # Embed the instruction using FastEmbed
-                embedder = COL_TO_MODEL["language_instruction"]
-                vector = list(embedder.embed(instruction_text))
-    
-                episode_table["language_instruction"] = [instruction_text]
-                episode_table["vector"] = vector  # Store as a list for Arrow compatibility
+        self.datasets[name] = dataset
             
-            episode_table["_episode_path"] = [episode_parquet_path]
-            episode_arrow_row = pa.table(episode_table)
-            tbl.add(episode_arrow_row)
-                    
-        return jsonify({"message": "Dataset written successfully"}), 200
-    
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(host=os.environ.get("HOST_IP_ADDR", "0.0.0.0"), port=11635)
-
-
-
-
+collectorfox = CollectorFox(lance_path, PARQUET_PATH, SKULK_IP_ADDR, ADVERTISE_IP_ADDR)

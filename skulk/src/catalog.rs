@@ -23,6 +23,7 @@ impl CatalogServer {
             .route("/", get(health_check))
             .route("/dataset/:name", post(register_dataset))
             .route("/dataset/:name/add", post(add_loc_to_ds))
+            .route("/dataset/:name/remove", post(remove_dataset))
             .route("/datasets", get(list_all_endpoints))
             .with_state(catalog);
         Ok(CatalogServer { app })
@@ -37,7 +38,7 @@ impl Catalog {
     pub fn init_catalog(&mut self) -> Result<(), String> {
         let _ = self.db_conn.execute(
             "CREATE TABLE IF NOT EXISTS catalog (
-                    dataset VARCHAR,
+                    dataset VARCHAR PRIMARY KEY,
                     schema BINARY,
                 );
                 ",
@@ -51,13 +52,35 @@ impl Catalog {
                 ",
             [],
         );
+        let _ = self.db_conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS addr_map (
+                    dataset VARCHAR,
+                    ip_addr VARCHAR,
+                );
+                ",
+            [],
+        );
         Ok(())
     }
     pub fn register_dataset(&mut self, name: String, schema: Vec<u8>) -> Result<(), String> {
-        let _ = self.db_conn.execute(
+        let res = self.db_conn.execute(
             "INSERT INTO catalog (dataset, schema) VALUES ($1, $2);",
             params![name, schema],
         );
+        if let Err(e) = res {
+            return Err(e.to_string());
+        }
+        Ok(())
+    }
+    pub fn remove_dataset(&mut self, name: String) -> Result<(), String> {
+        let res = self.db_conn.execute("DELETE FROM catalog WHERE dataset = $1;", params![name]);
+        if let Err(e) = res {
+            return Err(e.to_string());
+        }
+        let res = self.db_conn.execute("DELETE FROM foxes WHERE dataset = $1;", params![name]);
+        if let Err(e) = res {
+            return Err(e.to_string());
+        }
         Ok(())
     }
     pub fn add_loc_to_ds(&mut self, dataset: String, ip_addr: String) -> Result<(), String> {
@@ -124,13 +147,29 @@ async fn register_dataset(
     State(catalog): State<Arc<Mutex<Catalog>>>,
     Path(name): Path<String>,
     body: Bytes,
-) -> &'static str {
-    catalog
+) -> String {
+    let res = catalog
         .lock()
         .unwrap()
-        .register_dataset(name, body.to_vec())
-        .unwrap();
-    "Dataset registered\n"
+        .register_dataset(name, body.to_vec());
+    if let Err(e) = res {
+        return e;
+    }
+    "Dataset registered\n".to_string()
+}
+
+async fn remove_dataset (
+    State(catalog): State<Arc<Mutex<Catalog>>>,
+    Path(name): Path<String>,
+) -> String {
+    let res = catalog
+        .lock()
+        .unwrap()
+        .remove_dataset(name);
+    if let Err(e) = res {
+        return e;
+    }
+    "Dataset removed\n".to_string()
 }
 
 async fn add_loc_to_ds(

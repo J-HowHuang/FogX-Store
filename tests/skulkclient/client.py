@@ -51,10 +51,12 @@ class SkulkClient:
                 tables.append(pq.read_table(reader))
             step_data = pa.concat_tables(tables).to_pandas()
             step_data["_episode_id"] = step_data["_episode_id"].astype(str)
-        res = res.remove_column(res.schema.get_field_index("step_data"))
+            res = res.remove_column(res.schema.get_field_index("step_data"))
+            res = res.to_pandas()
+            res["_episode_id"] = res["_episode_id"].astype(str)
+            return res.merge(step_data, on="_episode_id")
+        
         res = res.to_pandas()
         res["_episode_id"] = res["_episode_id"].astype(str)
-        print(res.head())
-        print(step_data.head())
-        return res.merge(step_data, on="_episode_id")
+        return res
     
