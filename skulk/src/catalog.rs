@@ -1,3 +1,4 @@
+use arrow_ipc::convert::try_schema_from_ipc_buffer;
 use axum::body::Bytes;
 use axum::{
     extract::{Path, State},
@@ -5,8 +6,8 @@ use axum::{
     Router,
 };
 use duckdb::{params, Connection, Result};
+use log::info;
 use std::sync::{Arc, Mutex};
-use arrow_ipc::convert::try_schema_from_ipc_buffer;
 include!(concat!(env!("OUT_DIR"), "/catalog.cmd.rs"));
 
 pub struct Catalog {
@@ -52,14 +53,17 @@ impl Catalog {
                 ",
             [],
         );
-        let _ = self.db_conn.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS addr_map (
-                    dataset VARCHAR,
-                    ip_addr VARCHAR,
+        let res = self.db_conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS addr_map ON foxes (
+                    dataset,
+                    ip_addr
                 );
                 ",
             [],
         );
+        if let Err(e) = res {
+            info!("Error creating index: {}", e);
+        }
         Ok(())
     }
     pub fn register_dataset(&mut self, name: String, schema: Vec<u8>) -> Result<(), String> {
@@ -73,21 +77,28 @@ impl Catalog {
         Ok(())
     }
     pub fn remove_dataset(&mut self, name: String) -> Result<(), String> {
-        let res = self.db_conn.execute("DELETE FROM catalog WHERE dataset = $1;", params![name]);
+        let res = self
+            .db_conn
+            .execute("DELETE FROM catalog WHERE dataset = $1;", params![name]);
         if let Err(e) = res {
             return Err(e.to_string());
         }
-        let res = self.db_conn.execute("DELETE FROM foxes WHERE dataset = $1;", params![name]);
+        let res = self
+            .db_conn
+            .execute("DELETE FROM foxes WHERE dataset = $1;", params![name]);
         if let Err(e) = res {
             return Err(e.to_string());
         }
         Ok(())
     }
     pub fn add_loc_to_ds(&mut self, dataset: String, ip_addr: String) -> Result<(), String> {
-        let _ = self.db_conn.execute(
+        let res = self.db_conn.execute(
             "INSERT INTO foxes (dataset, ip_addr) VALUES ($1, $2);",
             params![dataset, ip_addr],
         );
+        if let Err(e) = res {
+            info!("Error adding location to dataset: {}", e);
+        }
         Ok(())
     }
     pub fn get_dataset_locs(&self, dataset: String) -> Vec<String> {
@@ -118,7 +129,18 @@ impl Catalog {
         log::info!("schema_raw: {:?}", schema_raw);
         // Read schema from the metadata
         let schema = try_schema_from_ipc_buffer(&schema_raw[..]).unwrap();
-        (schema.metadata().get(&format!("{}_model", &column)).unwrap().clone(), schema.metadata().get(&format!("{}_column", &column)).unwrap().clone())
+        (
+            schema
+                .metadata()
+                .get(&format!("{}_model", &column))
+                .unwrap()
+                .clone(),
+            schema
+                .metadata()
+                .get(&format!("{}_column", &column))
+                .unwrap()
+                .clone(),
+        )
     }
     pub fn list_all_endpoints(&self) -> Vec<String> {
         let mut endpoints = Vec::new();
@@ -158,14 +180,11 @@ async fn register_dataset(
     "Dataset registered\n".to_string()
 }
 
-async fn remove_dataset (
+async fn remove_dataset(
     State(catalog): State<Arc<Mutex<Catalog>>>,
     Path(name): Path<String>,
 ) -> String {
-    let res = catalog
-        .lock()
-        .unwrap()
-        .remove_dataset(name);
+    let res = catalog.lock().unwrap().remove_dataset(name);
     if let Err(e) = res {
         return e;
     }
