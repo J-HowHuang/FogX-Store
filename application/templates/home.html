@@ -8,7 +8,16 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Welcome to FogX</h1>
+        <h1 class="mb-4" style="text-align: center;">Welcome to FogX</h1>
+        <h3>Sample Data</h3>
+        <!-- Button to input sample data path and visualize -->
+        <form action="/index" method="get">
+            <button type="submit" class="btn btn-primary">Click to Visualize</button>
+        </form>
+        <br><br>
+
+        <!-- Parameters input-->
+        <h3>Parameters Input</h3>
         <form action="/process" method="post">
             <!-- Required Fields -->
             <div class="mb-3">
@@ -61,7 +70,7 @@
                 </select>
             </div>
 
-            <button type="submit" class="btn btn-primary">Submit</button>
+            <button type="submit" class="btn btn-primary">Submit Parameters</button>
         </form>
     </div>
 </body>

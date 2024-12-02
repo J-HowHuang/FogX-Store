@@ -20,10 +20,10 @@
     <div class="container mt-5">
         <h1 class="text-center">Processed Data</h1>
         <div class="text-center mt-3">
-            <a href="/" class="btn btn-secondary">Back to Home</a>
+            <a href="/index" class="btn btn-secondary">Back to Input File Path</a>
         </div>
 
-        <!-- 下拉菜单选择 Episode -->
+        <!-- Drop-down menu to select Episode -->
         <form method="POST" action="/display">
             <div class="mt-3">
                 <label for="episode_id" class="form-label">Select Episode:</label>
@@ -40,26 +40,26 @@
         <!-- Step Display -->
         {% if is_with_step %}
         <div class="mt-4 text-center">
-            <!-- 图片展示 -->
+            <!-- display image -->
             <div class="image-container mb-3">
                 <img id="step-image" src="" alt="Step Image">
             </div>
-            <!-- 其他字段展示 -->
+            <!-- display information in table format -->
             <div class="table-responsive">
                 <table class="table table-bordered">
                     <thead>
                         <tr id="info-headers">
-                            <!-- 动态生成表头 -->
+                            <!-- Dynamically generate table headers -->
                         </tr>
                     </thead>
                     <tbody>
                         <tr id="info-data">
-                            <!-- 动态生成数据 -->
+                            <!-- Dynamically generate table info -->
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <!-- 控制按钮 -->
+            <!-- Control Buttons -->
             <div class="mt-3">
                 <button id="prev-button" class="btn btn-secondary">Previous Step</button>
                 <button id="play-button" class="btn btn-primary">Play</button>
@@ -74,10 +74,10 @@
 
             function updateStepDisplay() {
                 const step = steps[currentStep];
-                // 更新图片
+                // Update image
                 document.getElementById("step-image").src = step.observation_image;
 
-                // 更新其他字段
+                // Update information table
                 const headers = document.getElementById("info-headers");
                 const data = document.getElementById("info-data");
                 headers.innerHTML = "";
@@ -122,7 +122,7 @@
             document.getElementById("play-button").addEventListener("click", playSteps);
             document.getElementById("pause-button").addEventListener("click", pauseSteps);
 
-            // 初始化显示第一个 Step
+            // Initialize displays the first Step
             updateStepDisplay();
         </script>
         {% else %}
