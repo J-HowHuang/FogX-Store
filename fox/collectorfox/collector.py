@@ -51,17 +51,25 @@ class CollectorFox:
         
         serialized_schema = schema.serialize().to_pybytes()
         # add the dataset to the skulk catalog
-        url = f"http://{self.skulk_ip_addr}:11632/dataset/{name}"
-        response = requests.post(url, data=serialized_schema)
-        if response.status_code != 200:
-            logger.error(f"Failed to create dataset '{name}' in Skulk")
-        logger.info(f"response from skulk: {response.text}")
+        try:
+            url = f"http://{self.skulk_ip_addr}:11632/dataset/{name}"
+            response = requests.post(url, data=serialized_schema)
+            logger.info(f"response from skulk: {response.text}")
+            if response.status_code != 200:
+                logger.error(f"Failed to create dataset '{name}' in Skulk")
+        except Exception as e:
+            logger.error(f"Failed to create dataset '{name}' in Skulk: {e}")
+            
+        
         # add the location to the skulk catalog
-        url = f"http://{self.skulk_ip_addr}:11632/dataset/{name}/add"
-        response = requests.post(url, data=self.my_ip_addr)
-        if response.status_code != 200:
-            logger.error(f"Failed to add this predator '{self.my_ip_addr}' to dataset '{name}' to Skulk")
-        logger.info(f"response from skulk: {response.text}")
+        try:
+            url = f"http://{self.skulk_ip_addr}:11632/dataset/{name}/add"
+            response = requests.post(url, data=self.my_ip_addr)
+            if response.status_code != 200:
+                logger.error(f"Failed to add this predator '{self.my_ip_addr}' to dataset '{name}' to Skulk")
+            logger.info(f"response from skulk: {response.text}")
+        except Exception as e:
+            logger.error(f"Failed to add this predator '{self.my_ip_addr}' to dataset '{name}' to Skulk: {e}")
             
         self.datasets[name] = dataset
             

@@ -5,55 +5,26 @@ import sys
 
 if __name__ == "__main__":
     logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+    
+    print("Usage: python example_client.py <skulk_ip_addr>")
 
     client = SkulkClient(sys.argv[1])
-
-    # table = client.get_dataset(SkulkQuery(
-    #     dataset="ucsd_pick_and_place_dataset_converted_externally_to_rlds",
-    #     columns=[],
-    #     with_step_data=False
-    # ))
-
-    # print(table.to_pandas())
     
     table = client.get_dataset(SkulkQuery(
-        dataset="cmu_stretch",
-        with_step_data=False
+        dataset="lerobot_universal",
+        with_step_data=True
     ))
     
-    # print(table.to_pandas())
-    
-    # table = client.get_dataset(SkulkQuery(
-    #     dataset="cmu_stretch",
-    #     columns=[],
-    #     with_step_data=False
-    # ))
-    
-    # print(table.to_pandas())
-    
     table = client.get_dataset(SkulkQuery(
-        dataset="cmu_stretch",
+        dataset="lerobot_universal",
         columns=["language_instruction"],
         vector_query=VectorQuery(
             column="language_instruction",
             text_query="dish washer",
-            top_k=3
+            top_k=10
         ),
         with_step_data=True
     ))
     
-    print(table)
-    
-    
-    table = client.get_dataset(SkulkQuery(
-        dataset="cmu_stretch",
-        columns=["language_instruction"],
-        vector_query=VectorQuery(
-            column="observation",
-            text_query="dish washer",
-            top_k=3
-        ),
-        with_step_data=False
-    ))
-    
+    print("Table:")
     print(table)
