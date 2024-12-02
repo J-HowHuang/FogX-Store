@@ -12,8 +12,12 @@ if __name__ == "__main__":
     
     table = client.get_dataset(SkulkQuery(
         dataset="lerobot_universal",
-        with_step_data=True
+        with_step_data=True,
+        limit=1
     ))
+    
+    print("Table:")
+    print(table) 
     
     table = client.get_dataset(SkulkQuery(
         dataset="lerobot_universal",
@@ -23,7 +27,8 @@ if __name__ == "__main__":
             text_query="dish washer",
             top_k=10
         ),
-        with_step_data=True
+        with_step_data=True,
+        limit=1
     ))
     
     print("Table:")
