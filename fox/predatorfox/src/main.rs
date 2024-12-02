@@ -31,9 +31,10 @@ use arrow_flight::flight_service_server::FlightServiceServer;
 async fn main() -> Result<(), ()> {
     env_logger::init();
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
-    let location = format!("{}:50051", env::var("ADVERTISE_IP_ADDR").unwrap_or("0.0.0.0".to_string()));
+    let advertise_location = format!("{}:50051", env::var("ADVERTISE_IP_ADDR").unwrap_or("0.0.0.0".to_string()));
+    let location = format!("{}:50051", env::var("HOST_IP_ADDR").unwrap_or("0.0.0.0".to_string()));
     let addr: SocketAddr = location.parse().unwrap();
-    let service = flight::FlightServiceImpl::new(location, "./data/dataset_db".to_string(), health_reporter.clone()).await.unwrap();
+    let service = flight::FlightServiceImpl::new(advertise_location, "./data/dataset_db".to_string(), health_reporter.clone()).await.unwrap();
     service.setup_predator().await;
     
     let svc = FlightServiceServer::new(service);
