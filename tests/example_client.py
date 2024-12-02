@@ -16,12 +16,10 @@ if __name__ == "__main__":
 
     # print(table.to_pandas())
     
-    # table = client.get_dataset(SkulkQuery(
-    #     dataset="ucsd_pick_and_place_dataset_converted_externally_to_rlds",
-    #     columns=["file_path", "n_transitions", "success"],
-    #     predicates="success=True",
-    #     with_step_data=True
-    # ))
+    table = client.get_dataset(SkulkQuery(
+        dataset="cmu_stretch",
+        with_step_data=False
+    ))
     
     # print(table.to_pandas())
     
@@ -42,6 +40,20 @@ if __name__ == "__main__":
             top_k=3
         ),
         with_step_data=True
+    ))
+    
+    print(table)
+    
+    
+    table = client.get_dataset(SkulkQuery(
+        dataset="cmu_stretch",
+        columns=["language_instruction"],
+        vector_query=VectorQuery(
+            column="observation",
+            text_query="dish washer",
+            top_k=3
+        ),
+        with_step_data=False
     ))
     
     print(table)
