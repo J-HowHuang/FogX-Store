@@ -1,5 +1,5 @@
 from dataset import FoxDatasetDefinition
-from transformation import RTXPipeline, LeRobotPipeline
+from transformation import RTXPipeline, LeRobotPipeline, ArPipeline
 from annotation import TextAnnotator, ClipAnnotator
 import pyarrow as pa
 
@@ -26,3 +26,18 @@ class LeRobotUniversal(FoxDatasetDefinition):
         self.add_annotators("language_instruction", "language_embedding", TextAnnotator("sentence-transformers/all-MiniLM-L6-v2"))
         self.add_annotators("observation", "clip_embedding", ClipAnnotator())
         # add transformations
+        
+class ARDataset(FoxDatasetDefinition):
+    def __init__(self):
+        super().__init__("ar_dataset", pa.schema([
+            pa.field("test_id", pa.string()),
+            pa.field("task_id", pa.string()),
+            pa.field("traj_len", pa.int64()),
+            pa.field("observation", pa.binary())
+        ]))
+        
+        self.add_transformation("ar", ArPipeline(episodes_per_task=5, step_data_sample_col=["observation"], step_data_sample_method="first"))
+        self.add_annotators("observation", "clip_embedding", ClipAnnotator())
+        
+
+
