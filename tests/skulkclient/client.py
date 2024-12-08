@@ -37,11 +37,14 @@ class SkulkClient:
         for endpoint in flight.endpoints:
             logger.debug(f"Endpoint: {endpoint.ticket}")
             for loc in endpoint.locations:
-                logger.debug(f"Location: {loc}")
-                client = pyarrow.flight.connect(loc)
-                reader = client.do_get(endpoint.ticket)
-                read_table = reader.read_all()
-                result.append(read_table)
+                try:
+                    logger.debug(f"Location: {loc}")
+                    client = pyarrow.flight.connect(loc)
+                    reader = client.do_get(endpoint.ticket)
+                    read_table = reader.read_all()
+                    result.append(read_table)
+                except Exception as e:
+                    logger.error(f"Error: {e}")
         res = pa.concat_tables(result)
         if skulk_query.with_step_data:
             parquets = res.column("step_data").combine_chunks().to_pylist()
