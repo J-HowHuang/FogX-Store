@@ -8,9 +8,18 @@ use std::env;
 use tonic::transport::Server;
 use std::{future::IntoFuture, sync::{Arc, Mutex}};
 
+use env_logger::Builder;
+use log::LevelFilter;
+
 #[tokio::main]
 async fn main() -> Result<(), ()> {
-    env_logger::init();
+    
+    let mut builder = Builder::from_default_env();
+
+    builder
+        .filter(None, LevelFilter::Info)
+        .format_timestamp_micros()
+        .init();
     let mut cat = catalog::Catalog::new("db/catalog").unwrap();
     cat.init_catalog().unwrap();
     let shared_cat = Arc::new(Mutex::new(cat));
