@@ -26,10 +26,17 @@ use std::env;
 use tonic::transport::Server;
 use arrow_flight::flight_service_server::FlightServiceServer;
 
+use env_logger::Builder;
+use log::LevelFilter;
 
 #[tokio::main]
 async fn main() -> Result<(), ()> {
-    env_logger::init();
+    let mut builder = Builder::from_default_env();
+
+    builder
+        .filter(None, LevelFilter::Info)
+        .format_timestamp_micros()
+        .init();
     let (health_reporter, health_service) = tonic_health::server::health_reporter();
     let advertise_location = format!("{}:50051", env::var("ADVERTISE_IP_ADDR").unwrap_or("0.0.0.0".to_string()));
     let location = format!("{}:50051", env::var("HOST_IP_ADDR").unwrap_or("0.0.0.0".to_string()));

@@ -4,6 +4,7 @@ use lancedb::connection::Connection;
 use lancedb::index::scalar::FullTextSearchQuery;
 use lancedb::query::{ExecutableQuery, Query, QueryBase, Select, VectorQuery};
 use lancedb::{connect, Result, Table as LanceDbTable};
+use log::info;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::fs::read;
@@ -96,6 +97,7 @@ impl Predator {
             .await?;
         let mut lance_query: LanceQuery;
         if let Some(vector_query) = query.vector_query.clone() {
+            info!("Start embedding for {:?}, uuid: {:?}", vector_query.text_query, query.uuid);
             let embedding = embed_query(
                 vec![vector_query.text_query],
                 &self.embed_models[&vector_query.embed_model.unwrap()],
@@ -106,6 +108,8 @@ impl Predator {
                 .embedding
                 .to_dense()
                 .unwrap();
+            info!("End embedding, uuid: {:?}", query.uuid);
+
             let vec_query = tbl
                 .query()
                 .nearest_to(embedding)
@@ -115,6 +119,8 @@ impl Predator {
                     .limit(vector_query.top_k as usize)
                     .column(&vector_query.column),
             );
+            info!("End KNN for uuid: {:?}", query.uuid);
+
         } else {
             lance_query = LanceQuery::Query(tbl.query());
         }
