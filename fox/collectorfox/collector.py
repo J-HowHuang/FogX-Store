@@ -32,7 +32,7 @@ class CollectorFox:
         
     def run(self):
         logger.info("Starting CollectorFox...")
-        self.flask_app.run(host=os.environ.get("HOST_IP_ADDR", "0.0.0.0"), port=11635)
+        self.flask_app.run(host=os.environ.get("HOST_IP_ADDR", "0.0.0.0"), port=11635, threaded=True)
 
     def route(self):
         return self.flask_app.route

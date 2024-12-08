@@ -18,6 +18,7 @@ class CMUStretch(FoxDatasetDefinition):
 class LeRobotUniversal(FoxDatasetDefinition):
     def __init__(self):
         super().__init__("lerobot_universal", pa.schema([
+                pa.field("rtx_dataset", pa.string()),
                 pa.field("language_instruction", pa.string()),
                 pa.field("observation", pa.binary())
         ]))

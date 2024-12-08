@@ -11,6 +11,8 @@ import io
 from pathlib import Path
 import tensorflow as tf
 import torch
+from urllib.parse import urlparse
+from urllib import parse
 
 GCS_TOP_K=5
 default_step_cols = [
@@ -121,7 +123,12 @@ class LeRobotPipeline(CollectorfoxTransformation):
     
     def get_iterator(self, src_path: str, dataset_name: str = None):
         assert(src_path.startswith('gs://')) # only support GCS for now
-        print("Loading dataset from {}".format(src_path))
+        url = urlparse(src_path)
+        query = parse.parse_qs(url.query) if url.query else {}
+        start = int(query.get("start", [0])[0])
+        end = int(query.get("end", [-1])[0])
+        
+        print("Loading dataset from {} with split [{}:{}]".format(src_path, start, end))
                 
         if dataset_name is None: # dangerous
             self.dataset_name = src_path.split('/')[-2]
@@ -130,13 +137,14 @@ class LeRobotPipeline(CollectorfoxTransformation):
         
         videos_dir = Path("./video")
         self.lerobot_steps_dict = load_from_raw(
-            raw_dir=src_path,
+            raw_dir=f"{url.scheme}://{url.netloc}/{url.path}",
             videos_dir=videos_dir,
             fps=3, 
             video=False,
             openx_dataset_name=dataset_name,
             split='train',
-            topk=GCS_TOP_K
+            start=start,
+            end=end
         )
         self.grouped_steps_iter = iter(group_lerobot_steps_with_episodes(self.lerobot_steps_dict))
         return self.__iter__()
@@ -147,6 +155,8 @@ class LeRobotPipeline(CollectorfoxTransformation):
         steps_len = len(steps['action'])
         
         episode_table = {}
+        
+        episode_table["rtx_dataset"] = [self.dataset_name]
         
         sample_step_idx = -1
         if self.sample_method is None:
