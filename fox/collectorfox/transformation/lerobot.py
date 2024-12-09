@@ -130,18 +130,14 @@ class LeRobotPipeline(CollectorfoxTransformation):
         
         print("Loading dataset from {} with split [{}:{}]".format(src_path, start, end))
                 
-        if dataset_name is None: # dangerous
-            self.dataset_name = src_path.split('/')[-2]
-        else:
-            self.dataset_name = dataset_name
-        
+        self.dataset_name = src_path.split('/')[-2]
         videos_dir = Path("./video")
         self.lerobot_steps_dict = load_from_raw(
             raw_dir=f"{url.scheme}://{url.netloc}/{url.path}",
             videos_dir=videos_dir,
             fps=3, 
             video=False,
-            openx_dataset_name=dataset_name,
+            openx_dataset_name=self.dataset_name,
             split='train',
             start=start,
             end=end
