@@ -87,7 +87,9 @@ def image_to_bytes(image: Image.Image, format="PNG"):
     # Convert image to bytes
     buffer = io.BytesIO()
     image.save(buffer, format=format)
-    return buffer.getvalue()
+    bytes = buffer.getvalue()
+    del buffer
+    return bytes
 
 def group_lerobot_steps_with_episodes(dataset):
     # map episode index to the dataset
@@ -122,21 +124,16 @@ class LeRobotPipeline(CollectorfoxTransformation):
     def get_iterator(self, src_path: str, dataset_name: str = None):
         assert(src_path.startswith('gs://')) # only support GCS for now
         print("Loading dataset from {}".format(src_path))
-                
-        if dataset_name is None: # dangerous
-            self.dataset_name = src_path.split('/')[-2]
-        else:
-            self.dataset_name = dataset_name
-        
+        self.dataset_name = src_path.split('/')[-2]
         videos_dir = Path("./video")
         self.lerobot_steps_dict = load_from_raw(
             raw_dir=src_path,
             videos_dir=videos_dir,
             fps=3, 
             video=False,
-            openx_dataset_name=dataset_name,
+            openx_dataset_name=self.dataset_name,
             split='train',
-            topk=GCS_TOP_K
+            topk=5
         )
         self.grouped_steps_iter = iter(group_lerobot_steps_with_episodes(self.lerobot_steps_dict))
         return self.__iter__()

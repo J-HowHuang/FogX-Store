@@ -14,7 +14,7 @@ import json
 
 CHANNEL = ['quest_control', 'stretch_status', 'meta_2_head_cam']
 
-class DatasetIterator:
+class DatasetGenerator:
     def __init__(self, src_path: str, episodes_per_task: int = 5):
         self.src_path = src_path
         self.episodes_per_task = episodes_per_task
@@ -80,8 +80,8 @@ class DatasetIterator:
             with open(path, 'r') as f:
                 raw_dataset = [json.loads(line) for line in f]
                 steps, traj_len = self._process_step_data(raw_dataset)
-                metadata['test_id'].append(test_id)
-                metadata['task_id'].append(f"task_{test_id_curr_task_id[test_id]}")
+                metadata['test_id'].append(test_id) # TODO - update test_id with real test_id name
+                metadata['task_id'].append(f"task_{test_id_curr_task_id[test_id]}") # TODO - update task_id with real task_id name
                 metadata['traj_len'].append(traj_len)
                 yield metadata, steps
 
@@ -97,7 +97,7 @@ class ArPipeline(CollectorfoxTransformation):
         self.dataset_name = dataset_name
         
         # load all the jsonl files in src_path
-        self.data_iter = iter(DatasetIterator(src_path, self.episodes_per_task))
+        self.data_iter = iter(DatasetGenerator(src_path, self.episodes_per_task))
         return self.__iter__()
     
     def __next__(self):
@@ -115,8 +115,6 @@ class ArPipeline(CollectorfoxTransformation):
             
         
         for col in self.sample_col:
-            print(f"Sampling {col} at step {sample_step_idx}")
-            print(len(step_data))
             episode[col] = [step_data[col][sample_step_idx]]
             
         return episode, pa.table(step_data)
