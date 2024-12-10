@@ -111,10 +111,12 @@ impl FlightService for FlightServiceImpl {
                 let cmd = predatorfox::cmd::Command::decode(descriptor.cmd).unwrap();
                 match predatorfox::cmd::CommandType::try_from(cmd.cmd_type) {
                     Ok(predatorfox::cmd::CommandType::Query) => {
-                        info!("Received query command");
+                        info!("Execute query, uuid: {:?}", cmd.query.uuid.clone().unwrap());
                         let stream = self.predator.execute_query(&cmd.query).await.expect("query failed");
-                        let flight_info = FlightInfo::new()
-                            .try_with_schema(
+                        info!("Query done, uuid: {:?}", cmd.query.uuid.clone().unwrap());
+                        let mut flight_info = FlightInfo::new();
+                        if !stream.is_empty() {
+                            flight_info = flight_info.try_with_schema(
                                 &stream[0].schema().clone()
                             )
                             .expect("schema failed")
@@ -135,6 +137,8 @@ impl FlightService for FlightServiceImpl {
                             // .with_total_bytes(0)
                             // .with_total_records(0)
                             .with_ordered(false);
+                        }
+                            
                         {
                             let mut write_guard = self.ticket_store.write().unwrap();
                             write_guard.insert(cmd.query.uuid.unwrap(), stream);
@@ -170,8 +174,9 @@ impl FlightService for FlightServiceImpl {
                 let cmd = predatorfox::cmd::Command::decode(descriptor.cmd).unwrap();
                 match predatorfox::cmd::CommandType::try_from(cmd.cmd_type) {
                     Ok(predatorfox::cmd::CommandType::Query) => {
-                        info!("Received query command");
+                        info!("Received query command, uuid: {:?}", cmd.query.uuid.clone().unwrap());
                         let stream = self.predator.execute_query(&cmd.query).await.expect("query failed");
+                        info!("Query done, uuid: {:?}", cmd.query.uuid.clone().unwrap());
                         let flight_info = FlightInfo::new()
                             .try_with_schema(
                                 &stream[0].schema().clone()

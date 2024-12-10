@@ -89,9 +89,9 @@ impl FlightService for FlightServiceImpl {
             Ok(DescriptorType::Cmd) => {
                 info!("Received command descriptor");
                 let mut skulk_query = SkulkQuery::decode(descriptor.cmd.clone()).unwrap();
-                info!("Requesting dataset {:?}", skulk_query.dataset);
                 let mut new_descriptor = descriptor.clone();
                 skulk_query.create_uuid();
+                info!("Requesting dataset {:?}, uuid: {:?}", skulk_query.dataset, skulk_query.uuid);
                 if let Some(vector_query) = skulk_query.vector_query.clone() {
                     info!("Requesting vector query {:?}", vector_query);
                     let (embed_model, embed_col) = self.catalog.lock().unwrap().get_embed_model_col(skulk_query.dataset.clone(), vector_query.column.clone());
@@ -107,18 +107,19 @@ impl FlightService for FlightServiceImpl {
                     cmd: Vec::<u8>::new().into(),
                     path: vec!["".to_string()],
                 });
-                info!("Found endpoints {:?}", locs);
+                info!("Found endpoints {:?}, uuid: {:?}", locs, skulk_query.uuid);
                 // relay poll request to all associated endpoints and collect responses
                 for loc in locs {
                     let data_endpoint = Channel::from_shared(format!("http://{}:50051", loc.uri)).expect("invalid uri");
                     let channel = data_endpoint.connect().await.expect("error connecting");
                     let mut client = FlightClient::new(channel);
-                    let sub_info = client.get_flight_info(new_descriptor.clone()).await?;
-                    for endpoint in sub_info.endpoint {
-                        flight_info = flight_info.with_endpoint(endpoint);
+                    if let Ok(sub_info) = client.get_flight_info(new_descriptor.clone()).await {
+                        for endpoint in sub_info.endpoint {
+                            flight_info = flight_info.with_endpoint(endpoint);
+                        }
                     }
                 }
-                info!("flight info: {:?}", flight_info);
+                info!("flight info: {:?}, uuid: {:?}", flight_info, skulk_query.uuid);
                 return Ok(Response::new(flight_info));
             }
             Ok(DescriptorType::Path) => {

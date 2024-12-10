@@ -37,11 +37,14 @@ class SkulkClient:
         for endpoint in flight.endpoints:
             logger.debug(f"Endpoint: {endpoint.ticket}")
             for loc in endpoint.locations:
-                logger.debug(f"Location: {loc}")
-                client = pyarrow.flight.connect(loc)
-                reader = client.do_get(endpoint.ticket)
-                read_table = reader.read_all()
-                result.append(read_table)
+                try:
+                    logger.debug(f"Location: {loc}")
+                    client = pyarrow.flight.connect(loc)
+                    reader = client.do_get(endpoint.ticket)
+                    read_table = reader.read_all()
+                    result.append(read_table)
+                except Exception as e:
+                    logger.error(f"Error: {e}")
         res = pa.concat_tables(result)
         if skulk_query.with_step_data:
             parquets = res.column("step_data").combine_chunks().to_pylist()
@@ -51,10 +54,12 @@ class SkulkClient:
                 tables.append(pq.read_table(reader))
             step_data = pa.concat_tables(tables).to_pandas()
             step_data["_episode_id"] = step_data["_episode_id"].astype(str)
-        res = res.remove_column(res.schema.get_field_index("step_data"))
+            res = res.remove_column(res.schema.get_field_index("step_data"))
+            res = res.to_pandas()
+            res["_episode_id"] = res["_episode_id"].astype(str)
+            return res.merge(step_data, on="_episode_id")
+        
         res = res.to_pandas()
         res["_episode_id"] = res["_episode_id"].astype(str)
-        print(res.head())
-        print(step_data.head())
-        return res.merge(step_data, on="_episode_id")
+        return res
     
